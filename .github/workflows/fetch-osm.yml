@@ -1,0 +1,42 @@
+# Downloads the OpenStreetMap coastline, intertidal rock and sand, and named
+# coastal features round Flamborough Head, and commits them to data/osm/.
+# Run it from the Actions tab (Run workflow). The map is then rebuilt from the
+# file with tools/build_osm_geography.py.
+name: Fetch OpenStreetMap coastline
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Query Overpass
+        run: |
+          set -euo pipefail
+          for url in https://overpass-api.de/api/interpreter https://overpass.kumi.systems/api/interpreter https://maps.mail.ru/osm/tools/overpass/api/interpreter; do
+            echo "Trying $url"
+            if curl -sS --fail --max-time 300 -A "flamborough-headland-tides (github.com/${GITHUB_REPOSITORY})" \
+                --data-urlencode "data@tools/osm-query.overpassql" "$url" -o data/osm/flamborough.json; then
+              if python3 -c "import json,sys; d=json.load(open('data/osm/flamborough.json')); n=len(d['elements']); print(n, 'elements'); sys.exit(0 if n else 1)"; then
+                exit 0
+              fi
+            fi
+            sleep 10
+          done
+          echo "All Overpass servers failed" >&2
+          exit 1
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/osm/flamborough.json
+          if git diff --cached --quiet; then echo "No change"; exit 0; fi
+          git commit -m "Fetch OpenStreetMap coastline and intertidal features"
+          git push
