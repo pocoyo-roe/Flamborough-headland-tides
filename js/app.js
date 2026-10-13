@@ -2,6 +2,8 @@
 (function () {
   const DATA = window.TIDAL_DATA;
   const LAND = window.LAND_OUTLINE;
+  const ISLETS = window.LAND_ISLETS || [];
+  const INTERTIDAL = window.INTERTIDAL || { areas: [], cliffs: [] };
   const LOCAL = window.LOCAL_KNOWLEDGE || { key: [], glossary: [] };
   const LOCAL_NAMES = window.LOCAL_NAMES || [];
   const diamonds = DATA.diamonds;
@@ -154,7 +156,7 @@
     center: [54.112, -0.12],
     zoom: window.matchMedia('(max-width: 820px)').matches ? 11 : 12,
     minZoom: 10,
-    maxZoom: 16,
+    maxZoom: 18,
     maxBounds: [[53.85, -0.6], [54.38, 0.4]],
     zoomControl: false,
   });
@@ -192,7 +194,14 @@
     }
     // A wide pale stroke under the land reads as the shallow-water tint along the shore.
     L.polygon(LAND, { className: 'shallows', interactive: false }).addTo(map);
-    L.polygon(LAND, { className: 'land', interactive: false }).addTo(map);
+    // Ground that dries at low water: rock scars and sand, under the land.
+    for (const a of INTERTIDAL.areas) {
+      const poly = L.polygon(a.ring, { className: `drying drying-${a.kind}`, interactive: !!a.name, smoothFactor: 0.5 }).addTo(map);
+      if (a.name) poly.bindTooltip(a.name, { className: 'ln-tip', sticky: true });
+    }
+    L.polygon(LAND, { className: 'land', interactive: false, smoothFactor: 0.5 }).addTo(map);
+    for (const r of ISLETS) L.polygon(r, { className: 'land', interactive: false, smoothFactor: 0.5 }).addTo(map);
+    for (const c of INTERTIDAL.cliffs) L.polyline(c, { className: 'cliff', interactive: false, smoothFactor: 0.5 }).addTo(map);
 
     const places = [
       ['Filey', 54.212, -0.305], ['Speeton', 54.158, -0.245], ['Bempton', 54.130, -0.180],
@@ -381,22 +390,24 @@
 
   // Land mask as a raster, filled row by row from the coastline polygon, so
   // the per-frame sea test is a lookup rather than a point-in-polygon test.
-  const MASK_STEP = 0.0004; // degrees, about 45 m of latitude
+  const MASK_STEP = 0.00025; // degrees, about 28 m of latitude
   const MASK_ROWS = Math.ceil((DOMAIN.n - DOMAIN.s) / MASK_STEP);
   const MASK_COLS = Math.ceil((DOMAIN.e - DOMAIN.w) / MASK_STEP);
   const landMask = new Uint8Array(MASK_ROWS * MASK_COLS);
   for (let r = 0; r < MASK_ROWS; r++) {
     const lat = DOMAIN.s + (r + 0.5) * MASK_STEP;
-    const xs = [];
-    for (let i = 0, j = LAND.length - 1; i < LAND.length; j = i++) {
-      const [yi, xi] = LAND[i], [yj, xj] = LAND[j];
-      if ((yi > lat) !== (yj > lat)) xs.push(xi + ((lat - yi) * (xj - xi)) / (yj - yi));
-    }
-    xs.sort((a, b) => a - b);
-    for (let k = 0; k + 1 < xs.length; k += 2) {
-      const c0 = Math.max(0, Math.ceil((xs[k] - DOMAIN.w) / MASK_STEP - 0.5));
-      const c1 = Math.min(MASK_COLS - 1, Math.floor((xs[k + 1] - DOMAIN.w) / MASK_STEP - 0.5));
-      for (let c = c0; c <= c1; c++) landMask[r * MASK_COLS + c] = 1;
+    for (const ring of [LAND, ...ISLETS]) {
+      const xs = [];
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [yi, xi] = ring[i], [yj, xj] = ring[j];
+        if ((yi > lat) !== (yj > lat)) xs.push(xi + ((lat - yi) * (xj - xi)) / (yj - yi));
+      }
+      xs.sort((a, b) => a - b);
+      for (let k = 0; k + 1 < xs.length; k += 2) {
+        const c0 = Math.max(0, Math.ceil((xs[k] - DOMAIN.w) / MASK_STEP - 0.5));
+        const c1 = Math.min(MASK_COLS - 1, Math.floor((xs[k + 1] - DOMAIN.w) / MASK_STEP - 0.5));
+        for (let c = c0; c <= c1; c++) landMask[r * MASK_COLS + c] = 1;
+      }
     }
   }
 

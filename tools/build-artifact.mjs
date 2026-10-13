@@ -6,7 +6,7 @@
 //
 // Usage: node tools/build-artifact.mjs
 
-import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -31,6 +31,7 @@ ${body}
 <script>window.FLAM_CONFIG = { tiles: false, tidesUrl: 'tides.json' };</script>
 ${script('data/tidal-diamonds.js')}
 ${script('data/coastline.js')}
+${existsSync(root + 'data/intertidal.js') ? script('data/intertidal.js') : ''}
 ${script('data/local-knowledge.js')}
 ${script('data/local-names.js')}
 ${script('js/tides.js')}
