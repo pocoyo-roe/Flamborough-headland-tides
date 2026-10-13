@@ -161,6 +161,7 @@
     zoomControl: false,
   });
   L.control.zoom({ position: 'topright' }).addTo(map);
+  window.flamMap = map; // handy for debugging from the console
 
   // Base map: web tiles where the page may load them, otherwise a drawn chart
   // (buff land, shallow-water tint, graticule) for hosts that block tile servers.
@@ -183,7 +184,9 @@
 
   function drawChartBase() {
     map.getContainer().classList.add('drawn-chart');
-    map.attributionControl.addAttribution('Simplified coastline · not for navigation');
+    map.attributionControl.addAttribution(window.LAND_ISLETS
+      ? 'Coastline © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · not for navigation'
+      : 'Simplified coastline · not for navigation');
     // Graticule every 5 minutes of arc.
     const step = 5 / 60;
     for (let lat = Math.ceil(53.85 / step) * step; lat < 54.38; lat += step) {
@@ -199,9 +202,12 @@
       const poly = L.polygon(a.ring, { className: `drying drying-${a.kind}`, interactive: !!a.name, smoothFactor: 0.5 }).addTo(map);
       if (a.name) poly.bindTooltip(a.name, { className: 'ln-tip', sticky: true });
     }
-    L.polygon(LAND, { className: 'land', interactive: false, smoothFactor: 0.5 }).addTo(map);
-    for (const r of ISLETS) L.polygon(r, { className: 'land', interactive: false, smoothFactor: 0.5 }).addTo(map);
-    for (const c of INTERTIDAL.cliffs) L.polyline(c, { className: 'cliff', interactive: false, smoothFactor: 0.5 }).addTo(map);
+    // Land sits in its own pane above the race and eddy overlays.
+    map.createPane('land').style.zIndex = 405;
+    const onLand = { pane: 'land', interactive: false, smoothFactor: 0.5 };
+    L.polygon(LAND, { ...onLand, className: 'land' }).addTo(map);
+    for (const r of ISLETS) L.polygon(r, { ...onLand, className: 'land' }).addTo(map);
+    for (const c of INTERTIDAL.cliffs) L.polyline(c, { ...onLand, className: 'cliff' }).addTo(map);
 
     const places = [
       ['Filey', 54.212, -0.305], ['Speeton', 54.158, -0.245], ['Bempton', 54.130, -0.180],
@@ -482,7 +488,9 @@
     if (!moving) {
       const vecs = diamonds.map((d) => Tides.diamondVector(d, state.hour, state.spring));
       const buckets = SPEED_STEPS.map(() => []);
-      const k = (SIM_HOURS_PER_SEC * dt) / 60; // knots -> degrees of latitude this frame
+      // knots -> degrees of latitude this frame; slower when zoomed in so the
+      // streaks keep a similar length on screen
+      const k = (SIM_HOURS_PER_SEC * dt) / 60 * Math.pow(2, 12 - map.getZoom()) ** 0.8;
       for (const p of particles) {
         const [u, v] = idwVector(vecs, p.lat, p.lon);
         const lat2 = p.lat + v * k;

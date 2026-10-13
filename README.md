@@ -54,8 +54,12 @@ Bridlington tidal levels (MHWS 6.1 m, MHWN 4.7 m, MLWN 2.3 m, MLWS 1.1 m, from V
 
 ## Geography
 
-- **Coastline** (`data/coastline.js`): the GSHHG full-resolution shoreline (Wessel & Smith, LGPL), clipped and smoothed by `tools/build_geography.py`. It is accurate to roughly 100–200 m, so small coves such as Selwicks Bay don't show.
-- **Local names** (`data/local-names.js`): 83 names of coves, rocks and cliffs from Lythgoe's map. That map isn't to scale, so each name keeps its order and spacing along the coast and is pinned to the real shoreline between control points: Thornwick Bay, North Landing, Selwicks Bay, the head end and South Landing. As a check, Staple Newk lands on the RSPB Bempton Cliffs viewpoints. Expect positions to be out by up to a couple of hundred metres.
+- **Coastline, stacks and drying ground** (`data/coastline.js`, `data/intertidal.js`): from OpenStreetMap (© OpenStreetMap contributors, ODbL). The coastline is OSM's `natural=coastline`, the mean high water line, traced from aerial imagery to roughly 5–10 m. The drying ground is the rock scars (West Scar, East Scar, Panniman Scars and others OSM has) and the sand that is covered at high water, shown in chart green. Cliff lines are dotted.
+  - `.github/workflows/fetch-osm.yml` downloads the data from Overpass into `data/osm/flamborough.json`. Run it from the repository's Actions tab when OSM has improved.
+  - `python3 tools/build_osm_geography.py` then rebuilds the map files from that download. The query itself is in `tools/osm-query.overpassql`.
+  - OSM only has the scars someone has mapped. Most of the headland's scars aren't in it yet; adding them to OpenStreetMap and re-running the workflow brings them into the map.
+- **Local names** (`data/local-names.js`): 83 names of coves, rocks and cliffs from Lythgoe's map. That map isn't to scale, so each name keeps its order and spacing along the coast and is pinned to the real shoreline between control points: Thornwick Bay, North Landing, Selwicks Bay, the head end and South Landing, plus every name OSM also has (West Scar, East Scar, Horse Hole, Robin Lythes Hole, Panniman Scars). Names between control points can still be out by tens of metres.
+- `tools/build_geography.py` is the older GSHHG-based builder, kept as a fallback if the OSM download is unavailable.
 
 ### Using your own ADMIRALTY chart data
 
@@ -91,7 +95,10 @@ If you edit the model instead, regenerate the data with `node tools/build-model-
 | `js/tides.js` | Tidal stream maths: time and space interpolation, vectors. No DOM, so Node can run it |
 | `js/app.js` | Map, particle animation, panel, chart |
 | `data/tidal-diamonds.js` | Diamond tables (illustrative model, see above) |
-| `data/coastline.js` | GSHHG shoreline for the drawn chart and the particle land mask |
+| `data/coastline.js` | OSM coastline and stacks for the drawn chart and the particle land mask |
+| `data/intertidal.js` | OSM rock scars, drying sand and cliff lines |
+| `data/osm/flamborough.json` | Raw OSM download (from the Fetch OpenStreetMap coastline workflow) |
+| `tools/build_osm_geography.py` | Builds the coastline, drying ground and name positions from the OSM download |
 | `data/local-knowledge.js` | Lythgoe's local tidal key and glossary |
 | `data/local-names.js` | Local names round the headland, placed on the coastline |
 | `tools/build_geography.py` | Builds the coastline and places the local names |

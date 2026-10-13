@@ -29,7 +29,7 @@ TOL_M = 2.0  # simplification tolerance in metres
 
 ROCK = {'reef', 'bare_rock', 'rock', 'stone', 'stack'}
 SAND = {'beach', 'sand', 'shingle', 'shoal', 'mud'}
-NAMED = {'bay', 'cape', 'peninsula', 'cave_entrance', 'arch', 'stack', 'reef', 'rock', 'bare_rock', 'strait', 'beach', 'cliff'}
+NAMED = {'shoal', 'bay', 'cape', 'peninsula', 'cave_entrance', 'arch', 'stack', 'reef', 'rock', 'bare_rock', 'strait', 'beach', 'cliff'}
 
 
 def norm(name):
@@ -42,25 +42,26 @@ def way_coords(el):
 
 
 def join_ways(ways):
-    """Join coastline ways end to end by node id into chains."""
-    by_start = {w['nodes'][0]: w for w in ways}
+    """Join coastline ways end to end into chains, matching shared end points
+    (the Overpass "out geom" output has coordinates but no node ids)."""
+    segs = [way_coords(w) for w in ways if len(w.get('geometry', [])) > 1]
+    by_start = {}
+    for i, sg in enumerate(segs):
+        by_start.setdefault(sg[0], []).append(i)
+    ends = {sg[-1] for sg in segs}
     used, chains = set(), []
-    for w in ways:
-        if w['id'] in used:
+    # start from segments nothing joins onto, then any loops left over
+    order = [i for i, sg in enumerate(segs) if sg[0] not in ends] + list(range(len(segs)))
+    for i in order:
+        if i in used:
             continue
-        # walk back to the start of this chain
-        start = w
-        ends = {x['nodes'][-1]: x for x in ways}
-        seen = {start['id']}
-        while start['nodes'][0] in ends and ends[start['nodes'][0]]['id'] not in seen and ends[start['nodes'][0]]['id'] not in used:
-            start = ends[start['nodes'][0]]
-            seen.add(start['id'])
-        chain, cur = [], start
-        while cur and cur['id'] not in used:
-            used.add(cur['id'])
-            pts = way_coords(cur)
+        chain, cur = [], i
+        while cur is not None and cur not in used:
+            used.add(cur)
+            pts = segs[cur]
             chain.extend(pts if not chain else pts[1:])
-            cur = by_start.get(cur['nodes'][-1])
+            nxt = [j for j in by_start.get(pts[-1], []) if j not in used]
+            cur = nxt[0] if nxt else None
         chains.append(chain)
     return chains
 
@@ -95,6 +96,15 @@ def rings_of(el):
     return []
 
 
+def simplify_ring(r, tol):
+    """Simplify a closed ring: Douglas-Peucker needs distinct end points, so
+    simplify the two halves separately and rejoin them."""
+    if len(r) < 5:
+        return r
+    h = len(r) // 2
+    return simplify(r[:h + 1], tol)[:-1] + simplify(r[h:], tol)
+
+
 def inside(p):
     S, W, N, E = BOX
     return S < p[0] < N and W < p[1] < E
@@ -123,7 +133,17 @@ def main():
         seg = seg[::-1]
     coast = simplify(seg, TOL_M)
     land = [[54.32, -0.6]] + rnd(coast) + [[53.9, -0.6]]
-    islet_rings = [rnd(simplify(r, TOL_M / 2)) for r in islets if any(inside(p) for p in r)]
+    islet_rings = [rnd(simplify_ring(r, TOL_M / 2)) for r in islets if any(inside(p) for p in r)]
+
+    def in_land(p):
+        lat, lon = p
+        hit = False
+        for ring in [land] + islet_rings:
+            for i in range(len(ring)):
+                (yi, xi), (yj, xj) = ring[i], ring[i - 1]
+                if (yi > lat) != (yj > lat) and lon < (xj - xi) * (lat - yi) / (yj - yi) + xi:
+                    hit = not hit
+        return hit
 
     # Intertidal ground and cliffs.
     inter = []
@@ -131,13 +151,18 @@ def main():
         t = e.get('tags', {})
         nat = t.get('natural', '')
         kind = None
-        if nat in ROCK or (nat == 'bare_rock') or t.get('tidal') == 'yes' and nat in ROCK:
+        # On this coast a "scar" is a rock platform that dries, whatever its tag.
+        if nat in ROCK or 'scar' in t.get('name', '').lower():
             kind = 'rock'
         elif nat in SAND or t.get('wetland') == 'tidalflat':
             kind = 'sand'
         if kind:
             for r in rings_of(e):
-                inter.append({'kind': kind, 'name': t.get('name'), 'ring': rnd(simplify(r, TOL_M / 2))})
+                # Keep only ground that reaches the sea: drops golf bunkers and
+                # dunes that lie wholly inland of the high water line.
+                if not any(not in_land(p) for p in r[::3]):
+                    continue
+                inter.append({'kind': kind, 'name': t.get('name'), 'ring': rnd(simplify_ring(r, TOL_M / 2))})
     cliffs = [rnd(simplify(way_coords(e), TOL_M)) for e in els
               if e['type'] == 'way' and e.get('tags', {}).get('natural') == 'cliff' and len(e.get('geometry', [])) > 1]
 

@@ -5,8 +5,8 @@
 window.LOCAL_KNOWLEDGE = {
   credit: 'D. J. Lythgoe M.B.E.',
   // "The buoy" in the key is the North Smithic north cardinal buoy (VQ).
-  // Approximate position; check it against a current chart.
-  buoy: { name: 'N Smithic', light: 'VQ', lat: 54.1033, lon: -0.0650 },
+  // Position from OpenStreetMap seamark data; check it against a current chart.
+  buoy: { name: 'N Smithic', light: 'VQ', lat: 54.10364, lon: -0.06489 },
   // Low water is listed between +5 and -5.5, so it sits at about ±6.
   key: [
     { hour: -6, label: 'Low water', text: 'Best of ebb in offing, young flood all up shore at N. Head. No tide inside from Dykes to Cattlemere Hole.' },
