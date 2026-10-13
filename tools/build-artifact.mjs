@@ -31,6 +31,8 @@ ${body}
 <script>window.FLAM_CONFIG = { tiles: false };</script>
 ${script('data/tidal-diamonds.js')}
 ${script('data/coastline.js')}
+${script('data/local-knowledge.js')}
+${script('data/local-names.js')}
 ${script('js/tides.js')}
 ${script('js/app.js')}
 `;

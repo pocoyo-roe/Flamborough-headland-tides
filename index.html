@@ -28,6 +28,7 @@
           <span class="readout-main" id="time-label">HW</span>
           <span class="readout-sub" id="clock-label"></span>
         </div>
+        <div class="muted small" id="height-label"></div>
         <input id="time" class="slider" type="range" min="-6" max="6" step="0.25" value="-3"
                aria-label="Hours relative to high water at the reference port">
         <div class="ticks" aria-hidden="true"><span>HW−6</span><span>HW−3</span><span>HW</span><span>HW+3</span><span>HW+6</span></div>
@@ -40,6 +41,10 @@
           <label for="hw-time" id="hw-label">Today's HW Hull</label>
           <input id="hw-time" type="time">
           <button id="now" class="btn" type="button" disabled title="Enter today's high water time first">Now</button>
+        </div>
+        <div class="row field">
+          <label for="hw-height">HW height (m), from the tide table</label>
+          <input id="hw-height" type="number" min="3" max="7.5" step="0.1" inputmode="decimal" placeholder="e.g. 5.6">
         </div>
 
         <label class="field-label" for="range">Spring ↔ neap</label>
@@ -59,6 +64,10 @@
       <section class="card now" aria-live="polite">
         <h2>Right now</h2>
         <div id="narrative"></div>
+        <figure class="local-key">
+          <figcaption><span class="eyebrow">Local tidal key</span> <span id="local-when"></span></figcaption>
+          <blockquote id="local-text"></blockquote>
+        </figure>
       </section>
 
       <section class="card" aria-labelledby="diamond-h">
@@ -94,11 +103,19 @@
         <ol class="features" id="features"></ol>
       </section>
 
+      <section class="card small" aria-labelledby="terms-h">
+        <h2 id="terms-h">Local terms</h2>
+        <p class="muted" id="local-credit"></p>
+        <p class="muted">On this coast the flood runs south and the ebb runs north. Times are from high water at Bridlington.</p>
+        <dl class="glossary" id="glossary"></dl>
+        <p class="muted">Zoom in to see the local names of the coves, rocks and cliffs round the headland.</p>
+      </section>
+
       <section class="card small muted" aria-labelledby="how-h">
         <h2 id="how-h">How to read this</h2>
         <p>Each magenta ◆ is a tidal diamond, as printed on ADMIRALTY charts. Its table gives the direction the stream flows towards (set, °T) and its speed (rate, knots) for every hour from six hours before to six hours after high water at the reference port, at spring and at neap tides.</p>
         <p>Between diamonds the map blends the tables by distance, and between whole hours it blends them in time. The moving streaks show the result: faster water is darker and moves faster.</p>
-        <p>Base map © OpenStreetMap contributors, seamarks © OpenSeaMap. Not for navigation: always use an up-to-date official chart and tidal stream atlas.</p>
+        <p>Coastline from GSHHG; base map © OpenStreetMap contributors, seamarks © OpenSeaMap. Not for navigation: always use an up-to-date official chart and tidal stream atlas.</p>
       </section>
     </aside>
   </div>
@@ -106,6 +123,8 @@
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="data/tidal-diamonds.js"></script>
   <script src="data/coastline.js"></script>
+  <script src="data/local-knowledge.js"></script>
+  <script src="data/local-names.js"></script>
   <script src="js/tides.js"></script>
   <script src="js/app.js"></script>
 </body>

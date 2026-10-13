@@ -24,20 +24,25 @@ The base map comes from OpenStreetMap and the seamarks overlay from OpenSeaMap, 
 
 - **Magenta diamonds**: tidal diamonds laid out like the ones on ADMIRALTY charts. The arrow shows the current set and rate. Tap a diamond to see its full table and its rate curve over the tidal cycle.
 - **Moving streaks**: the stream between diamonds, blended by inverse-distance weighting. Darker, faster streaks mean faster water.
-- **Time slider**: hours before and after high water at the reference port (HW Hull). Enter today's HW time to see clock times, and press **Now** to jump to the current state of the tide.
+- **Time slider**: hours before and after high water at Bridlington. Enter today's HW Bridlington time to see clock times, and press **Now** to jump to the current state of the tide. Enter the HW height to set springs or neaps automatically.
+- **Local tidal key**: the matching line from Lythgoe's key for the time on the slider. Zoom in to see the local names round the headland.
 - **Spring ↔ neap**: blends between the spring and neap rates in each table.
 - **Wind from**: pick a wind direction. The race zone lights up when wind is against tide.
 - **Why the tides here are unusual**: six short explainers, each with a **Show me** button that moves the map and clock to the right place and time.
 
 ## The data: please read
 
-`data/tidal-diamonds.js` holds the diamond tables. **The values in it now are an illustrative model, not ADMIRALTY data.** ADMIRALTY charts and tidal stream atlases are Crown copyright (UKHO) and their tables can't be republished here. Instead, `tools/build-model-data.mjs` builds tables that fit what the published pilotage notes say about Flamborough Head:
+`data/tidal-diamonds.js` holds the diamond tables, timed from **HW Bridlington**. **The values in it are an illustrative model, not ADMIRALTY data.** ADMIRALTY charts and tidal stream atlases are Crown copyright (UKHO), and their tables can't be republished here. Instead, `tools/build-model-data.mjs` builds tables fitted to two sources that agree with each other:
 
-- the south-going stream begins about HW Hull −6 and is strongest about HW Hull −3
-- the north-going stream begins about HW Hull +1 and is strongest about HW Hull +3
-- the stream reaches about 3 kn off the head at springs, with overfalls in wind against tide
+- **D. J. Lythgoe's local tidal key** (`data/local-knowledge.js`), transcribed from his hand-drawn map of the headland. It uses local terms: the *hive* (flood tide inside at North Head during the ebb), the *outset* (ebb tide ashore before high water), *Silex* (Selwicks Bay), the *offing* (about 3 miles off) and the *Whelk Pots* (3 miles off Breil Newk). On this coast the flood runs south and the ebb runs north.
+- **Published pilotage notes**, timed from HW Hull: south-going stream from about HW Hull −6 to +1, strongest about −3, and about 3 kn off the head at springs. With HW Hull about an hour after HW Bridlington, this matches the local key's offshore flood from about HW Bridlington −5 to slack in the offing at +2½.
 
-The eddies and the early turn at the head are modelled on standard headland behaviour. Check them against your chart before relying on them.
+Bridlington tidal levels (MHWS 6.1 m, MHWN 4.7 m, MLWN 2.3 m, MLWS 1.1 m, from Visit My Harbour) turn a high-water height from the tide table into a spring/neap blend, and give a rough height of tide.
+
+## Geography
+
+- **Coastline** (`data/coastline.js`): the GSHHG full-resolution shoreline (Wessel & Smith, LGPL), clipped and smoothed by `tools/build_geography.py`. It is accurate to roughly 100–200 m, so small coves such as Selwicks Bay don't show.
+- **Local names** (`data/local-names.js`): 83 names of coves, rocks and cliffs from Lythgoe's map. That map isn't to scale, so each name keeps its order and spacing along the coast and is pinned to the real shoreline between control points: Thornwick Bay, North Landing, Selwicks Bay, the head end and South Landing. As a check, Staple Newk lands on the RSPB Bempton Cliffs viewpoints. Expect positions to be out by up to a couple of hundred metres.
 
 ### Using your own ADMIRALTY chart data
 
@@ -57,7 +62,7 @@ The covering charts are BA 129 (Whitby to Flamborough Head) and BA 121 (Flamboro
 }
 ```
 
-Also set `referencePort` to the port your chart's tables are referenced to (for example `HW Dover` or `HW Immingham`), and change `source` so the warning banner describes the data correctly. The app reads only the tables, and the narrative, eddy highlights and race warning all work from them. Then run the checks:
+Also set `referencePort` to the port your chart's tables are referenced to if it isn't Bridlington (for example `HW Dover` or `HW River Tees`), and change `source` so the warning banner describes the data correctly. The app reads only the tables, and the narrative, eddy highlights and race warning all work from them. Then run the checks:
 
 ```sh
 node tools/check-tides.mjs
@@ -73,6 +78,9 @@ If you edit the model instead, regenerate the data with `node tools/build-model-
 | `js/tides.js` | Tidal stream maths: time and space interpolation, vectors. No DOM, so Node can run it |
 | `js/app.js` | Map, particle animation, panel, chart |
 | `data/tidal-diamonds.js` | Diamond tables (illustrative model, see above) |
-| `data/coastline.js` | Rough land outline that keeps particles off the land |
+| `data/coastline.js` | GSHHG shoreline for the drawn chart and the particle land mask |
+| `data/local-knowledge.js` | Lythgoe's local tidal key and glossary |
+| `data/local-names.js` | Local names round the headland, placed on the coastline |
+| `tools/build_geography.py` | Builds the coastline and places the local names |
 | `tools/build-model-data.mjs` | Generates the illustrative tables |
 | `tools/check-tides.mjs` | Sanity checks for the maths and the tables |

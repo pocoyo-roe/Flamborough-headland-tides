@@ -1009,6 +1009,31 @@ summary { cursor: pointer; font-size: 0.9rem; color: var(--text-2); }
 .leaflet-bar a, .leaflet-bar a:hover { background: var(--surface); color: var(--text); border-bottom-color: var(--border); }
 .leaflet-bar { border-color: var(--border) !important; }
 
+/* ---------------------------------------------------------------- local knowledge */
+.local-key { margin: 10px 0 0; padding: 10px 12px; background: var(--surface-2); border-radius: 8px; }
+.local-key figcaption { font-size: 0.8rem; color: var(--text-2); font-family: var(--font-data); }
+.eyebrow { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.7rem; color: var(--muted); font-family: var(--font-ui); }
+.local-key blockquote { margin: 4px 0 0; font-family: var(--font-display); font-style: italic; font-size: 1rem; line-height: 1.45; }
+.glossary { display: grid; gap: 6px; margin: 8px 0; }
+.glossary div { display: grid; grid-template-columns: 7.5em 1fr; gap: 8px; }
+.glossary dt { font-weight: 600; }
+.glossary dd { margin: 0; color: var(--text-2); min-width: 0; }
+#hw-height { width: 6.5em; font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; }
+
+.local-name { display: none; }
+.show-local .local-name { display: block; }
+.ln-dot { position: absolute; left: 3px; top: 3px; width: 4px; height: 4px; border-radius: 50%; background: var(--land-edge); }
+.local-name.rock .ln-dot { width: 6px; height: 6px; left: 2px; top: 2px; background: none; border: 1.5px solid var(--land-edge); }
+.ln-text {
+  display: none; position: absolute; left: 10px; top: -3px; white-space: nowrap;
+  font-size: 10.5px; color: var(--text-2);
+  text-shadow: 0 0 3px var(--sea), 0 0 3px var(--sea), 0 0 3px var(--sea);
+}
+.show-local-text .ln-text { display: block; }
+.show-local-text .leaflet-tooltip.ln-tip { display: none; }
+.leaflet-tooltip.ln-tip { background: var(--surface); color: var(--text); border-color: var(--border); font: 12px var(--font-ui); }
+.leaflet-tooltip.ln-tip::before { border-top-color: var(--border); }
+
 </style>
 <div class="app">
     <div id="map" class="map" aria-label="Map of Flamborough Head with animated tidal streams"></div>
@@ -1026,6 +1051,7 @@ summary { cursor: pointer; font-size: 0.9rem; color: var(--text-2); }
           <span class="readout-main" id="time-label">HW</span>
           <span class="readout-sub" id="clock-label"></span>
         </div>
+        <div class="muted small" id="height-label"></div>
         <input id="time" class="slider" type="range" min="-6" max="6" step="0.25" value="-3"
                aria-label="Hours relative to high water at the reference port">
         <div class="ticks" aria-hidden="true"><span>HW−6</span><span>HW−3</span><span>HW</span><span>HW+3</span><span>HW+6</span></div>
@@ -1038,6 +1064,10 @@ summary { cursor: pointer; font-size: 0.9rem; color: var(--text-2); }
           <label for="hw-time" id="hw-label">Today's HW Hull</label>
           <input id="hw-time" type="time">
           <button id="now" class="btn" type="button" disabled title="Enter today's high water time first">Now</button>
+        </div>
+        <div class="row field">
+          <label for="hw-height">HW height (m), from the tide table</label>
+          <input id="hw-height" type="number" min="3" max="7.5" step="0.1" inputmode="decimal" placeholder="e.g. 5.6">
         </div>
 
         <label class="field-label" for="range">Spring ↔ neap</label>
@@ -1057,6 +1087,10 @@ summary { cursor: pointer; font-size: 0.9rem; color: var(--text-2); }
       <section class="card now" aria-live="polite">
         <h2>Right now</h2>
         <div id="narrative"></div>
+        <figure class="local-key">
+          <figcaption><span class="eyebrow">Local tidal key</span> <span id="local-when"></span></figcaption>
+          <blockquote id="local-text"></blockquote>
+        </figure>
       </section>
 
       <section class="card" aria-labelledby="diamond-h">
@@ -1092,11 +1126,19 @@ summary { cursor: pointer; font-size: 0.9rem; color: var(--text-2); }
         <ol class="features" id="features"></ol>
       </section>
 
+      <section class="card small" aria-labelledby="terms-h">
+        <h2 id="terms-h">Local terms</h2>
+        <p class="muted" id="local-credit"></p>
+        <p class="muted">On this coast the flood runs south and the ebb runs north. Times are from high water at Bridlington.</p>
+        <dl class="glossary" id="glossary"></dl>
+        <p class="muted">Zoom in to see the local names of the coves, rocks and cliffs round the headland.</p>
+      </section>
+
       <section class="card small muted" aria-labelledby="how-h">
         <h2 id="how-h">How to read this</h2>
         <p>Each magenta ◆ is a tidal diamond, as printed on ADMIRALTY charts. Its table gives the direction the stream flows towards (set, °T) and its speed (rate, knots) for every hour from six hours before to six hours after high water at the reference port, at spring and at neap tides.</p>
         <p>Between diamonds the map blends the tables by distance, and between whole hours it blends them in time. The moving streaks show the result: faster water is darker and moves faster.</p>
-        <p>Base map © OpenStreetMap contributors, seamarks © OpenSeaMap. Not for navigation: always use an up-to-date official chart and tidal stream atlas.</p>
+        <p>Coastline from GSHHG; base map © OpenStreetMap contributors, seamarks © OpenSeaMap. Not for navigation: always use an up-to-date official chart and tidal stream atlas.</p>
       </section>
     </aside>
   </div>
@@ -1107,8 +1149,14 @@ summary { cursor: pointer; font-size: 0.9rem; color: var(--text-2); }
 // Generated by tools/build-model-data.mjs. Replace the tables with values
 // from your ADMIRALTY chart to use real data (see README.md).
 window.TIDAL_DATA = {
-  "source": "ILLUSTRATIVE MODEL fitted to published pilotage notes. NOT ADMIRALTY data. Not for navigation.",
-  "referencePort": "HW Hull (Albert Dock)",
+  "source": "ILLUSTRATIVE MODEL fitted to D. J. Lythgoe's local tidal key and published pilotage notes. NOT ADMIRALTY data. Not for navigation.",
+  "referencePort": "HW Bridlington",
+  "levels": {
+    "MHWS": 6.1,
+    "MHWN": 4.7,
+    "MLWN": 2.3,
+    "MLWS": 1.1
+  },
   "generated": "tools/build-model-data.mjs",
   "diamonds": [
     {
@@ -1116,32 +1164,32 @@ window.TIDAL_DATA = {
       "name": "Filey Bay",
       "lat": 54.19,
       "lon": -0.205,
-      "note": "Sheltered bay north of the headland. Weak, regular streams parallel to the shore.",
+      "note": "Sheltered bay north of the headland. Weak, regular streams parallel to the shore: flood to the south-east, ebb to the north-west.",
       "eddy": null,
       "table": [
         {
           "hour": -6,
           "set": 335,
-          "spring": 0.1,
-          "neap": 0.1
+          "spring": 0.5,
+          "neap": 0.3
         },
         {
           "hour": -5,
           "set": 155,
-          "spring": 0.3,
-          "neap": 0.2
+          "spring": 0,
+          "neap": 0
         },
         {
           "hour": -4,
           "set": 155,
-          "spring": 0.7,
-          "neap": 0.4
+          "spring": 0.4,
+          "neap": 0.2
         },
         {
           "hour": -3,
           "set": 155,
-          "spring": 0.9,
-          "neap": 0.5
+          "spring": 0.7,
+          "neap": 0.4
         },
         {
           "hour": -2,
@@ -1152,50 +1200,50 @@ window.TIDAL_DATA = {
         {
           "hour": -1,
           "set": 155,
-          "spring": 0.8,
-          "neap": 0.4
+          "spring": 1,
+          "neap": 0.5
         },
         {
           "hour": 0,
           "set": 155,
-          "spring": 0.5,
-          "neap": 0.3
-        },
-        {
-          "hour": 1,
-          "set": 155,
-          "spring": 0.1,
-          "neap": 0.1
-        },
-        {
-          "hour": 2,
-          "set": 335,
-          "spring": 0.4,
-          "neap": 0.2
-        },
-        {
-          "hour": 3,
-          "set": 335,
-          "spring": 0.8,
-          "neap": 0.4
-        },
-        {
-          "hour": 4,
-          "set": 335,
           "spring": 0.9,
           "neap": 0.4
         },
         {
-          "hour": 5,
+          "hour": 1,
+          "set": 155,
+          "spring": 0.6,
+          "neap": 0.3
+        },
+        {
+          "hour": 2,
+          "set": 155,
+          "spring": 0.2,
+          "neap": 0.1
+        },
+        {
+          "hour": 3,
+          "set": 335,
+          "spring": 0.3,
+          "neap": 0.1
+        },
+        {
+          "hour": 4,
           "set": 335,
           "spring": 0.7,
           "neap": 0.4
         },
         {
+          "hour": 5,
+          "set": 335,
+          "spring": 0.9,
+          "neap": 0.4
+        },
+        {
           "hour": 6,
           "set": 335,
-          "spring": 0.3,
-          "neap": 0.2
+          "spring": 0.7,
+          "neap": 0.4
         }
       ]
     },
@@ -1204,32 +1252,32 @@ window.TIDAL_DATA = {
       "name": "Off Bempton Cliffs",
       "lat": 54.165,
       "lon": -0.11,
-      "note": "Streams follow the line of the cliffs and begin to accelerate towards the head.",
+      "note": "About a mile off the cliffs, outside the inshore ebb that runs \"all up shore to ½ mile off\" from HW+2. The stream follows the cliffs and accelerates towards the head.",
       "eddy": null,
       "table": [
         {
           "hour": -6,
-          "set": 130,
-          "spring": 0,
-          "neap": 0
+          "set": 310,
+          "spring": 0.7,
+          "neap": 0.4
         },
         {
           "hour": -5,
           "set": 130,
-          "spring": 0.8,
-          "neap": 0.4
+          "spring": 0.2,
+          "neap": 0.1
         },
         {
           "hour": -4,
           "set": 130,
-          "spring": 1.4,
-          "neap": 0.7
+          "spring": 0.9,
+          "neap": 0.4
         },
         {
           "hour": -3,
           "set": 130,
-          "spring": 1.8,
-          "neap": 0.9
+          "spring": 1.5,
+          "neap": 0.7
         },
         {
           "hour": -2,
@@ -1240,138 +1288,226 @@ window.TIDAL_DATA = {
         {
           "hour": -1,
           "set": 130,
-          "spring": 1.4,
-          "neap": 0.7
+          "spring": 1.8,
+          "neap": 0.9
         },
         {
           "hour": 0,
           "set": 130,
-          "spring": 0.8,
-          "neap": 0.4
-        },
-        {
-          "hour": 1,
-          "set": 310,
-          "spring": 0,
-          "neap": 0
-        },
-        {
-          "hour": 2,
-          "set": 310,
-          "spring": 0.9,
-          "neap": 0.4
-        },
-        {
-          "hour": 3,
-          "set": 310,
           "spring": 1.5,
           "neap": 0.7
         },
         {
+          "hour": 1,
+          "set": 130,
+          "spring": 0.9,
+          "neap": 0.4
+        },
+        {
+          "hour": 2,
+          "set": 130,
+          "spring": 0.2,
+          "neap": 0.1
+        },
+        {
+          "hour": 3,
+          "set": 310,
+          "spring": 0.7,
+          "neap": 0.4
+        },
+        {
           "hour": 4,
+          "set": 310,
+          "spring": 1.4,
+          "neap": 0.7
+        },
+        {
+          "hour": 5,
           "set": 310,
           "spring": 1.6,
           "neap": 0.8
         },
         {
-          "hour": 5,
-          "set": 310,
-          "spring": 1.2,
-          "neap": 0.6
-        },
-        {
           "hour": 6,
           "set": 310,
-          "spring": 0.4,
-          "neap": 0.2
+          "spring": 1.1,
+          "neap": 0.5
         }
       ]
     },
     {
       "id": "C",
-      "name": "Off North Landing (inshore)",
+      "name": "Off North Landing (inside N. Head)",
       "lat": 54.138,
       "lon": -0.085,
-      "note": "Inshore on the north side. While the main stream runs north, a lee eddy keeps the inshore water running back south-east towards the head, so the set here hardly reverses.",
+      "note": "Inside the 10 fathom line on the north side. Here the inshore stream runs south-east towards the head end for most of the tide: the flood, and then the \"hive\", a flood tide inside while the main ebb runs north offshore. The inshore ebb only runs for about two hours after high water.",
       "eddy": "N",
       "table": [
         {
           "hour": -6,
           "set": 125,
-          "spring": 0.3,
-          "neap": 0.2
+          "spring": 1,
+          "neap": 0.5
         },
         {
           "hour": -5,
           "set": 125,
-          "spring": 0.9,
-          "neap": 0.4
-        },
-        {
-          "hour": -4,
-          "set": 125,
-          "spring": 1.3,
+          "spring": 1.2,
           "neap": 0.6
         },
         {
-          "hour": -3,
+          "hour": -4,
           "set": 125,
           "spring": 1.4,
           "neap": 0.7
         },
         {
+          "hour": -3,
+          "set": 125,
+          "spring": 1.6,
+          "neap": 0.8
+        },
+        {
           "hour": -2,
           "set": 125,
-          "spring": 1.3,
-          "neap": 0.6
+          "spring": 1.6,
+          "neap": 0.8
         },
         {
           "hour": -1,
           "set": 125,
-          "spring": 0.9,
-          "neap": 0.4
+          "spring": 1.4,
+          "neap": 0.7
         },
         {
           "hour": 0,
           "set": 125,
-          "spring": 0.3,
-          "neap": 0.2
+          "spring": 0.7,
+          "neap": 0.3
         },
         {
           "hour": 1,
-          "set": 120,
-          "spring": 0.2,
+          "set": 305,
+          "spring": 0.3,
           "neap": 0.1
         },
         {
           "hour": 2,
-          "set": 120,
+          "set": 305,
+          "spring": 0.9,
+          "neap": 0.4
+        },
+        {
+          "hour": 3,
+          "set": 305,
           "spring": 0.5,
           "neap": 0.2
         },
         {
+          "hour": 4,
+          "set": 125,
+          "spring": 0.2,
+          "neap": 0.1
+        },
+        {
+          "hour": 5,
+          "set": 125,
+          "spring": 0.5,
+          "neap": 0.3
+        },
+        {
+          "hour": 6,
+          "set": 125,
+          "spring": 0.9,
+          "neap": 0.4
+        }
+      ]
+    },
+    {
+      "id": "K",
+      "name": "Selwicks Bay (Silex)",
+      "lat": 54.1215,
+      "lon": -0.0762,
+      "note": "Silex is the local name for Selwicks Bay, by the lighthouse. The stream here turns four times a tide: flood, ebb, the hive starting at HW+2½, then a short \"latter ebb\" from about HW+4½ until the young flood.",
+      "eddy": null,
+      "table": [
+        {
+          "hour": -6,
+          "set": 150,
+          "spring": 0.2,
+          "neap": 0.1
+        },
+        {
+          "hour": -5,
+          "set": 150,
+          "spring": 1.1,
+          "neap": 0.5
+        },
+        {
+          "hour": -4,
+          "set": 150,
+          "spring": 1.7,
+          "neap": 0.8
+        },
+        {
+          "hour": -3,
+          "set": 150,
+          "spring": 1.8,
+          "neap": 0.9
+        },
+        {
+          "hour": -2,
+          "set": 150,
+          "spring": 1.6,
+          "neap": 0.8
+        },
+        {
+          "hour": -1,
+          "set": 150,
+          "spring": 1.1,
+          "neap": 0.5
+        },
+        {
+          "hour": 0,
+          "set": 150,
+          "spring": 0.4,
+          "neap": 0.2
+        },
+        {
+          "hour": 1,
+          "set": 320,
+          "spring": 0.7,
+          "neap": 0.4
+        },
+        {
+          "hour": 2,
+          "set": 320,
+          "spring": 0.7,
+          "neap": 0.4
+        },
+        {
           "hour": 3,
-          "set": 120,
+          "set": 145,
           "spring": 0.6,
           "neap": 0.3
         },
         {
           "hour": 4,
-          "set": 120,
-          "spring": 0.5,
+          "set": 145,
+          "spring": 0.6,
           "neap": 0.3
         },
         {
           "hour": 5,
-          "set": 120,
-          "spring": 0.3,
-          "neap": 0.2
+          "set": 330,
+          "spring": 0.6,
+          "neap": 0.3
         },
         {
           "hour": 6,
-          "set": 125,
+          "set": 330,
           "spring": 0.1,
-          "neap": 0
+          "neap": 0.1
         }
       ]
     },
@@ -1380,344 +1516,432 @@ window.TIDAL_DATA = {
       "name": "Flamborough Head race",
       "lat": 54.118,
       "lon": -0.04,
-      "note": "About 1.5 nm east of the head. The fastest water on this coast; overfalls and a tide race form here, worst with wind against tide. Turns about 30 min before the offshore stream.",
+      "note": "About 1½ nm east of the head end. The fastest water on this coast: overfalls and a tide race form here, worst with wind against tide. It turns before the offing and after the inshore water.",
       "eddy": null,
       "table": [
         {
           "hour": -6,
+          "set": 345,
+          "spring": 1,
+          "neap": 0.5
+        },
+        {
+          "hour": -5,
           "set": 165,
           "spring": 0.7,
           "neap": 0.3
         },
         {
-          "hour": -5,
+          "hour": -4,
           "set": 165,
           "spring": 1.9,
           "neap": 0.9
         },
         {
-          "hour": -4,
+          "hour": -3,
           "set": 165,
           "spring": 2.7,
           "neap": 1.4
         },
         {
-          "hour": -3,
+          "hour": -2,
           "set": 165,
           "spring": 3,
           "neap": 1.5
         },
         {
-          "hour": -2,
+          "hour": -1,
           "set": 165,
           "spring": 2.7,
           "neap": 1.4
         },
         {
-          "hour": -1,
-          "set": 165,
-          "spring": 1.9,
-          "neap": 0.9
-        },
-        {
           "hour": 0,
           "set": 165,
-          "spring": 0.7,
-          "neap": 0.3
+          "spring": 2,
+          "neap": 1
         },
         {
           "hour": 1,
-          "set": 345,
-          "spring": 0.8,
-          "neap": 0.4
+          "set": 165,
+          "spring": 0.9,
+          "neap": 0.5
         },
         {
           "hour": 2,
           "set": 345,
-          "spring": 2.1,
-          "neap": 1
+          "spring": 0.4,
+          "neap": 0.2
         },
         {
           "hour": 3,
           "set": 345,
-          "spring": 2.7,
-          "neap": 1.3
+          "spring": 1.6,
+          "neap": 0.8
         },
         {
           "hour": 4,
           "set": 345,
-          "spring": 2.4,
+          "spring": 2.5,
           "neap": 1.2
         },
         {
           "hour": 5,
           "set": 345,
-          "spring": 1.4,
-          "neap": 0.7
+          "spring": 2.7,
+          "neap": 1.3
         },
         {
           "hour": 6,
-          "set": 165,
-          "spring": 0.1,
+          "set": 345,
+          "spring": 1.7,
+          "neap": 0.8
+        }
+      ]
+    },
+    {
+      "id": "W",
+      "name": "Whelk Pots",
+      "lat": 54.1615,
+      "lon": -0.0294,
+      "note": "The fishing grounds about 3 miles off Breil Newk. The ebb comes in strong here soon after it starts in the offing.",
+      "eddy": null,
+      "table": [
+        {
+          "hour": -6,
+          "set": 330,
+          "spring": 1.1,
+          "neap": 0.5
+        },
+        {
+          "hour": -5,
+          "set": 330,
+          "spring": 0.2,
           "neap": 0.1
+        },
+        {
+          "hour": -4,
+          "set": 150,
+          "spring": 0.6,
+          "neap": 0.3
+        },
+        {
+          "hour": -3,
+          "set": 150,
+          "spring": 1.3,
+          "neap": 0.7
+        },
+        {
+          "hour": -2,
+          "set": 150,
+          "spring": 1.8,
+          "neap": 0.9
+        },
+        {
+          "hour": -1,
+          "set": 150,
+          "spring": 1.9,
+          "neap": 0.9
+        },
+        {
+          "hour": 0,
+          "set": 150,
+          "spring": 1.6,
+          "neap": 0.8
+        },
+        {
+          "hour": 1,
+          "set": 150,
+          "spring": 1,
+          "neap": 0.5
+        },
+        {
+          "hour": 2,
+          "set": 150,
+          "spring": 0.2,
+          "neap": 0.1
+        },
+        {
+          "hour": 3,
+          "set": 330,
+          "spring": 1.3,
+          "neap": 0.7
+        },
+        {
+          "hour": 4,
+          "set": 330,
+          "spring": 2.1,
+          "neap": 1
+        },
+        {
+          "hour": 5,
+          "set": 330,
+          "spring": 1.9,
+          "neap": 1
+        },
+        {
+          "hour": 6,
+          "set": 330,
+          "spring": 1.4,
+          "neap": 0.7
         }
       ]
     },
     {
       "id": "E",
-      "name": "Offshore, 4 nm E",
+      "name": "Offside, 4 nm E",
       "lat": 54.12,
       "lon": 0.03,
-      "note": "Open-sea stream, little affected by the headland. Useful as a reference for the general North Sea flow.",
+      "note": "The open-sea stream 3–4 miles off the head (\"offside\"). It turns last: the ebb is still easing away here at HW−4 while the flood is already running well inshore.",
       "eddy": null,
       "table": [
         {
           "hour": -6,
-          "set": 160,
-          "spring": 0,
-          "neap": 0
+          "set": 340,
+          "spring": 1.7,
+          "neap": 0.8
         },
         {
           "hour": -5,
-          "set": 160,
-          "spring": 0.9,
-          "neap": 0.4
-        },
-        {
-          "hour": -4,
-          "set": 160,
-          "spring": 1.6,
-          "neap": 0.8
-        },
-        {
-          "hour": -3,
-          "set": 160,
-          "spring": 1.9,
-          "neap": 1
-        },
-        {
-          "hour": -2,
-          "set": 160,
-          "spring": 1.9,
-          "neap": 1
-        },
-        {
-          "hour": -1,
-          "set": 160,
-          "spring": 1.6,
-          "neap": 0.8
-        },
-        {
-          "hour": 0,
-          "set": 160,
-          "spring": 0.9,
-          "neap": 0.4
-        },
-        {
-          "hour": 1,
-          "set": 340,
-          "spring": 0,
-          "neap": 0
-        },
-        {
-          "hour": 2,
           "set": 340,
           "spring": 1,
           "neap": 0.5
         },
         {
-          "hour": 3,
-          "set": 340,
-          "spring": 1.6,
-          "neap": 0.8
+          "hour": -4,
+          "set": 160,
+          "spring": 0,
+          "neap": 0
         },
         {
-          "hour": 4,
-          "set": 340,
+          "hour": -3,
+          "set": 160,
+          "spring": 1,
+          "neap": 0.5
+        },
+        {
+          "hour": -2,
+          "set": 160,
           "spring": 1.8,
           "neap": 0.9
         },
         {
+          "hour": -1,
+          "set": 160,
+          "spring": 2,
+          "neap": 1
+        },
+        {
+          "hour": 0,
+          "set": 160,
+          "spring": 1.8,
+          "neap": 0.9
+        },
+        {
+          "hour": 1,
+          "set": 160,
+          "spring": 1.2,
+          "neap": 0.6
+        },
+        {
+          "hour": 2,
+          "set": 160,
+          "spring": 0.4,
+          "neap": 0.2
+        },
+        {
+          "hour": 3,
+          "set": 340,
+          "spring": 0.4,
+          "neap": 0.2
+        },
+        {
+          "hour": 4,
+          "set": 340,
+          "spring": 1.2,
+          "neap": 0.6
+        },
+        {
           "hour": 5,
           "set": 340,
-          "spring": 1.3,
-          "neap": 0.7
+          "spring": 1.7,
+          "neap": 0.8
         },
         {
           "hour": 6,
           "set": 340,
-          "spring": 0.4,
-          "neap": 0.2
+          "spring": 1.8,
+          "neap": 0.9
         }
       ]
     },
     {
       "id": "F",
-      "name": "SE of the head",
-      "lat": 54.088,
-      "lon": -0.055,
-      "note": "Where the stream that has rounded the head fans out across the mouth of Bridlington Bay.",
+      "name": "Off the head end, by the buoy",
+      "lat": 54.092,
+      "lon": -0.058,
+      "note": "South-east of the head end, near the buoy the local key refers to. The outset reaches here about an hour before high water, and the ebb has eased here by HW+5.",
       "eddy": null,
       "table": [
         {
           "hour": -6,
-          "set": 195,
-          "spring": 0.2,
-          "neap": 0.1
+          "set": 35,
+          "spring": 0,
+          "neap": 0
         },
         {
           "hour": -5,
-          "set": 195,
-          "spring": 1.2,
-          "neap": 0.6
+          "set": 200,
+          "spring": 0.5,
+          "neap": 0.3
         },
         {
           "hour": -4,
-          "set": 195,
-          "spring": 1.9,
-          "neap": 0.9
-        },
-        {
-          "hour": -3,
-          "set": 195,
-          "spring": 2.2,
-          "neap": 1.1
-        },
-        {
-          "hour": -2,
-          "set": 195,
-          "spring": 2.1,
-          "neap": 1
-        },
-        {
-          "hour": -1,
-          "set": 195,
-          "spring": 1.6,
-          "neap": 0.8
-        },
-        {
-          "hour": 0,
-          "set": 195,
-          "spring": 0.7,
-          "neap": 0.4
-        },
-        {
-          "hour": 1,
-          "set": 20,
-          "spring": 0.3,
-          "neap": 0.1
-        },
-        {
-          "hour": 2,
-          "set": 20,
+          "set": 200,
           "spring": 1.3,
           "neap": 0.7
         },
         {
-          "hour": 3,
-          "set": 20,
-          "spring": 1.9,
-          "neap": 1
+          "hour": -3,
+          "set": 200,
+          "spring": 1.6,
+          "neap": 0.8
         },
         {
-          "hour": 4,
-          "set": 20,
-          "spring": 1.9,
-          "neap": 1
-        },
-        {
-          "hour": 5,
-          "set": 20,
-          "spring": 1.3,
+          "hour": -2,
+          "set": 200,
+          "spring": 1.2,
           "neap": 0.6
         },
         {
-          "hour": 6,
-          "set": 20,
-          "spring": 0.2,
+          "hour": -1,
+          "set": 200,
+          "spring": 0.3,
           "neap": 0.1
+        },
+        {
+          "hour": 0,
+          "set": 35,
+          "spring": 0.8,
+          "neap": 0.4
+        },
+        {
+          "hour": 1,
+          "set": 35,
+          "spring": 1.6,
+          "neap": 0.8
+        },
+        {
+          "hour": 2,
+          "set": 35,
+          "spring": 1.8,
+          "neap": 0.9
+        },
+        {
+          "hour": 3,
+          "set": 35,
+          "spring": 1.5,
+          "neap": 0.8
+        },
+        {
+          "hour": 4,
+          "set": 35,
+          "spring": 0.9,
+          "neap": 0.4
+        },
+        {
+          "hour": 5,
+          "set": 35,
+          "spring": 0,
+          "neap": 0
+        },
+        {
+          "hour": 6,
+          "set": 35,
+          "spring": 0,
+          "neap": 0
         }
       ]
     },
     {
       "id": "G",
-      "name": "Off South Landing (inshore)",
-      "lat": 54.098,
+      "name": "Off South Landing (inside bay)",
+      "lat": 54.0995,
       "lon": -0.115,
-      "note": "Inshore on the south side. While the main stream runs south, the head shelters this water and a clockwise eddy sends it back north-east towards the head. When the main stream runs north it also sets east along this shore, so the set here is easterly almost all the time.",
+      "note": "Within ¼ mile of the shore in Bridlington Bay. From HW−3 the \"outset\" (the ebb running ashore before high water) sets north-east along the shore towards the head end, against the main flood. At low water there is no tide here at all.",
       "eddy": "S",
       "table": [
         {
           "hour": -6,
           "set": 60,
-          "spring": 0.1,
-          "neap": 0.1
+          "spring": 0,
+          "neap": 0
         },
         {
           "hour": -5,
-          "set": 60,
-          "spring": 0.4,
-          "neap": 0.2
+          "set": 235,
+          "spring": 0,
+          "neap": 0
         },
         {
           "hour": -4,
-          "set": 60,
-          "spring": 0.5,
+          "set": 235,
+          "spring": 0.7,
           "neap": 0.3
         },
         {
           "hour": -3,
           "set": 60,
-          "spring": 0.6,
-          "neap": 0.3
+          "spring": 0,
+          "neap": 0
         },
         {
           "hour": -2,
           "set": 60,
           "spring": 0.5,
-          "neap": 0.3
+          "neap": 0.2
         },
         {
           "hour": -1,
           "set": 60,
-          "spring": 0.4,
-          "neap": 0.2
+          "spring": 0.8,
+          "neap": 0.4
         },
         {
           "hour": 0,
           "set": 60,
-          "spring": 0.1,
-          "neap": 0.1
-        },
-        {
-          "hour": 1,
-          "set": 75,
-          "spring": 0.3,
-          "neap": 0.2
-        },
-        {
-          "hour": 2,
-          "set": 75,
-          "spring": 0.9,
-          "neap": 0.5
-        },
-        {
-          "hour": 3,
-          "set": 75,
-          "spring": 1.2,
-          "neap": 0.6
-        },
-        {
-          "hour": 4,
-          "set": 75,
           "spring": 1.1,
           "neap": 0.5
         },
         {
+          "hour": 1,
+          "set": 60,
+          "spring": 1.1,
+          "neap": 0.5
+        },
+        {
+          "hour": 2,
+          "set": 60,
+          "spring": 1,
+          "neap": 0.5
+        },
+        {
+          "hour": 3,
+          "set": 60,
+          "spring": 0.8,
+          "neap": 0.4
+        },
+        {
+          "hour": 4,
+          "set": 60,
+          "spring": 0.5,
+          "neap": 0.2
+        },
+        {
           "hour": 5,
-          "set": 75,
-          "spring": 0.6,
-          "neap": 0.3
+          "set": 60,
+          "spring": 0.1,
+          "neap": 0
         },
         {
           "hour": 6,
@@ -1732,86 +1956,86 @@ window.TIDAL_DATA = {
       "name": "Smithic Sands",
       "lat": 54.068,
       "lon": -0.15,
-      "note": "Shallow bank in Bridlington Bay. Weak streams in the shelter of the head, turning later than outside.",
+      "note": "Shallow bank in Bridlington Bay. Weak streams: a short flood, then the outset running towards the head from about HW−2, then slack around low water.",
       "eddy": null,
       "table": [
         {
           "hour": -6,
-          "set": 15,
-          "spring": 0.2,
-          "neap": 0.1
+          "set": 35,
+          "spring": 0,
+          "neap": 0
         },
         {
           "hour": -5,
-          "set": 200,
-          "spring": 0.2,
-          "neap": 0.1
+          "set": 205,
+          "spring": 0,
+          "neap": 0
         },
         {
           "hour": -4,
-          "set": 200,
-          "spring": 0.4,
-          "neap": 0.2
+          "set": 205,
+          "spring": 0.6,
+          "neap": 0.3
         },
         {
           "hour": -3,
-          "set": 200,
-          "spring": 0.6,
+          "set": 205,
+          "spring": 0.5,
           "neap": 0.3
         },
         {
           "hour": -2,
-          "set": 200,
-          "spring": 0.7,
-          "neap": 0.4
+          "set": 35,
+          "spring": 0.1,
+          "neap": 0
         },
         {
           "hour": -1,
-          "set": 200,
-          "spring": 0.6,
-          "neap": 0.3
-        },
-        {
-          "hour": 0,
-          "set": 200,
+          "set": 35,
           "spring": 0.4,
           "neap": 0.2
         },
         {
+          "hour": 0,
+          "set": 35,
+          "spring": 0.6,
+          "neap": 0.3
+        },
+        {
           "hour": 1,
-          "set": 200,
-          "spring": 0.2,
-          "neap": 0.1
+          "set": 35,
+          "spring": 0.7,
+          "neap": 0.3
         },
         {
           "hour": 2,
-          "set": 15,
-          "spring": 0.2,
-          "neap": 0.1
+          "set": 35,
+          "spring": 0.7,
+          "neap": 0.3
         },
         {
           "hour": 3,
-          "set": 15,
+          "set": 35,
           "spring": 0.5,
           "neap": 0.2
         },
         {
           "hour": 4,
-          "set": 15,
-          "spring": 0.6,
-          "neap": 0.3
+          "set": 35,
+          "spring": 0.2,
+          "neap": 0.1
         },
         {
           "hour": 5,
-          "set": 15,
-          "spring": 0.5,
-          "neap": 0.3
+          "set": 35,
+          "spring": 0,
+          "neap": 0
         },
         {
           "hour": 6,
-          "set": 15,
-          "spring": 0.3,
-          "neap": 0.2
+          "set": 35,
+          "spring": 0,
+          "neap": 0
         }
       ]
     },
@@ -1820,32 +2044,32 @@ window.TIDAL_DATA = {
       "name": "Bridlington Bay approach",
       "lat": 54.045,
       "lon": -0.075,
-      "note": "Outer bay. Streams follow the Holderness coast to the south.",
+      "note": "Outer bay, beyond the buoy. Streams follow the Holderness coast.",
       "eddy": null,
       "table": [
         {
           "hour": -6,
+          "set": 5,
+          "spring": 0.6,
+          "neap": 0.3
+        },
+        {
+          "hour": -5,
           "set": 185,
           "spring": 0,
           "neap": 0
         },
         {
-          "hour": -5,
-          "set": 185,
-          "spring": 0.6,
-          "neap": 0.3
-        },
-        {
           "hour": -4,
           "set": 185,
-          "spring": 1.1,
-          "neap": 0.5
+          "spring": 0.8,
+          "neap": 0.4
         },
         {
           "hour": -3,
           "set": 185,
-          "spring": 1.4,
-          "neap": 0.7
+          "spring": 1.3,
+          "neap": 0.6
         },
         {
           "hour": -2,
@@ -1862,19 +2086,19 @@ window.TIDAL_DATA = {
         {
           "hour": 0,
           "set": 185,
-          "spring": 0.6,
-          "neap": 0.3
+          "spring": 0.4,
+          "neap": 0.2
         },
         {
           "hour": 1,
           "set": 5,
-          "spring": 0,
-          "neap": 0
+          "spring": 0.3,
+          "neap": 0.1
         },
         {
           "hour": 2,
           "set": 5,
-          "spring": 0.7,
+          "spring": 0.8,
           "neap": 0.4
         },
         {
@@ -1892,14 +2116,14 @@ window.TIDAL_DATA = {
         {
           "hour": 5,
           "set": 5,
-          "spring": 1,
-          "neap": 0.5
+          "spring": 1.2,
+          "neap": 0.6
         },
         {
           "hour": 6,
           "set": 5,
-          "spring": 0.3,
-          "neap": 0.2
+          "spring": 0.8,
+          "neap": 0.4
         }
       ]
     }
@@ -1908,59 +2132,476 @@ window.TIDAL_DATA = {
 
 </script>
 <script>
-// Simplified land outline around Flamborough Head, as [lat, lon] pairs.
-// Used only to keep the animated flow particles off the land; the base map
-// tiles provide the real coastline. Traced roughly at ~200 m accuracy.
-window.LAND_OUTLINE = [
-  // inland corner, north-west
-  [54.30, -0.45],
-  // Filey and Filey Brigg
-  [54.235, -0.330],
-  [54.214, -0.282],
-  [54.218, -0.262],
-  [54.212, -0.258],
-  [54.206, -0.285],
-  // Filey Bay
-  [54.193, -0.284],
-  [54.180, -0.281],
-  [54.168, -0.270],
-  [54.160, -0.252],
-  [54.156, -0.226],
-  // Speeton and Bempton cliffs
-  [54.153, -0.200],
-  [54.149, -0.172],
-  [54.146, -0.148],
-  [54.142, -0.130],
-  // Thornwick Bay and North Landing
-  [54.136, -0.114],
-  [54.130, -0.104],
-  [54.128, -0.098],
-  [54.125, -0.088],
-  // Selwicks Bay and the tip of Flamborough Head
-  [54.121, -0.080],
-  [54.119, -0.073],
-  [54.116, -0.069],
-  [54.113, -0.072],
-  // south side of the head
-  [54.110, -0.082],
-  [54.107, -0.098],
-  [54.104, -0.115],
-  // South Landing, Danes Dyke, Sewerby
-  [54.103, -0.130],
-  [54.102, -0.145],
-  [54.098, -0.164],
-  [54.090, -0.180],
-  // Bridlington
-  [54.083, -0.190],
-  [54.075, -0.196],
-  [54.060, -0.200],
-  // Fraisthorpe and Barmston, down the Holderness coast
-  [54.040, -0.205],
-  [54.015, -0.212],
-  [53.990, -0.205],
-  [53.960, -0.195],
-  // inland corner, south-west
-  [53.90, -0.45],
+// Land outline around Flamborough Head, as [lat, lon] pairs, for the drawn
+// chart base map and to keep flow particles off the land.
+// Shoreline: GSHHG full resolution (Wessel & Smith, LGPL), smoothed.
+// Generated by tools/build_geography.py.
+window.LAND_OUTLINE = [[54.32,-0.6],[54.31917,-0.41586],[54.31831,-0.41724],[54.31675,-0.41754],[54.31582,-0.41721],[54.31532,-0.41645],[54.31461,-0.41593],[54.3125,-0.41556],[54.31161,-0.41449],[54.3088,-0.41393],[54.30752,-0.41263],[54.30635,-0.40998],[54.30614,-0.40852],[54.30575,-0.40744],[54.30475,-0.40607],[54.30359,-0.40602],[54.30255,-0.40723],[54.30105,-0.40763],[54.30002,-0.40884],[54.29893,-0.40916],[54.29826,-0.40886],[54.29737,-0.40765],[54.29676,-0.40741],[54.29589,-0.40619],[54.29478,-0.40591],[54.29394,-0.40527],[54.29243,-0.40272],[54.29177,-0.40244],[54.29094,-0.40116],[54.2898,-0.4004],[54.28884,-0.39818],[54.2887,-0.39687],[54.28807,-0.39519],[54.28792,-0.394],[54.28925,-0.39042],[54.28945,-0.38937],[54.28957,-0.38693],[54.28934,-0.38488],[54.2891,-0.3841],[54.28808,-0.38269],[54.28728,-0.3825],[54.28666,-0.38312],[54.28478,-0.38626],[54.2818,-0.39194],[54.28134,-0.39255],[54.28073,-0.39282],[54.28031,-0.39356],[54.2799,-0.39388],[54.27844,-0.39418],[54.27594,-0.39387],[54.27489,-0.39267],[54.27404,-0.39221],[54.27336,-0.39115],[54.27192,-0.39079],[54.27088,-0.38953],[54.26937,-0.38895],[54.26744,-0.38611],[54.26664,-0.38558],[54.26414,-0.38119],[54.26331,-0.38076],[54.26307,-0.3804],[54.26284,-0.3758],[54.26245,-0.37408],[54.26213,-0.37347],[54.26128,-0.3727],[54.25917,-0.37218],[54.25823,-0.37092],[54.25757,-0.37064],[54.25576,-0.36775],[54.25484,-0.36719],[54.25427,-0.36457],[54.2535,-0.36422],[54.25268,-0.36439],[54.25186,-0.36541],[54.25104,-0.36685],[54.25021,-0.36748],[54.24979,-0.36749],[54.24912,-0.3672],[54.24844,-0.36619],[54.24758,-0.36574],[54.24674,-0.36454],[54.2456,-0.36374],[54.24481,-0.3621],[54.24429,-0.35947],[54.243,-0.35659],[54.24284,-0.35523],[54.24222,-0.35355],[54.24202,-0.35188],[54.2414,-0.34988],[54.24124,-0.34748],[54.24128,-0.34448],[54.24153,-0.34273],[54.24188,-0.34171],[54.24204,-0.33983],[54.24183,-0.33652],[54.2416,-0.33574],[54.24075,-0.33434],[54.24011,-0.33407],[54.23925,-0.33286],[54.23832,-0.33234],[54.23806,-0.33198],[54.23773,-0.33001],[54.23555,-0.32506],[54.23526,-0.32315],[54.23474,-0.32194],[54.23449,-0.32025],[54.23389,-0.31859],[54.23349,-0.31656],[54.23139,-0.312],[54.22991,-0.30964],[54.22936,-0.30918],[54.22894,-0.30919],[54.22817,-0.30873],[54.22752,-0.30765],[54.22713,-0.30593],[54.2269,-0.30168],[54.22628,-0.29983],[54.22607,-0.29812],[54.22545,-0.29649],[54.22526,-0.29484],[54.22463,-0.29315],[54.22442,-0.29148],[54.2238,-0.28979],[54.22358,-0.28813],[54.22309,-0.28691],[54.22276,-0.28499],[54.22055,-0.27999],[54.22026,-0.2782],[54.21974,-0.27683],[54.21951,-0.27385],[54.21888,-0.2717],[54.21877,-0.27087],[54.21865,-0.2668],[54.21837,-0.26597],[54.21761,-0.26575],[54.21677,-0.26449],[54.21613,-0.2642],[54.21534,-0.26513],[54.21463,-0.26682],[54.21458,-0.26816],[54.21536,-0.27023],[54.21547,-0.27152],[54.21609,-0.27324],[54.21623,-0.27458],[54.21596,-0.27693],[54.21541,-0.27823],[54.21473,-0.27902],[54.2136,-0.27929],[54.21254,-0.28051],[54.21109,-0.281],[54.21031,-0.28193],[54.20948,-0.28223],[54.20323,-0.28255],[54.19968,-0.28224],[54.19884,-0.28193],[54.19863,-0.28152],[54.19816,-0.2812],[54.19423,-0.28079],[54.19302,-0.28026],[54.19246,-0.27952],[54.19203,-0.27931],[54.19036,-0.27914],[54.18965,-0.27862],[54.18905,-0.27766],[54.1882,-0.27723],[54.18736,-0.27601],[54.18673,-0.27578],[54.18593,-0.27449],[54.18503,-0.27394],[54.18357,-0.27146],[54.18254,-0.27063],[54.18109,-0.2682],[54.18003,-0.26738],[54.17857,-0.26487],[54.17734,-0.2636],[54.17263,-0.25484],[54.17217,-0.25421],[54.17148,-0.25387],[54.17122,-0.25308],[54.17121,-0.25231],[54.17064,-0.25085],[54.16378,-0.23667],[54.16206,-0.23272],[54.16192,-0.2315],[54.16141,-0.23027],[54.16108,-0.22814],[54.16059,-0.22692],[54.16035,-0.2252],[54.15972,-0.22335],[54.1594,-0.21833],[54.15888,-0.21681],[54.15859,-0.21331],[54.15807,-0.21183],[54.15784,-0.20893],[54.15721,-0.20682],[54.15699,-0.20385],[54.1564,-0.20168],[54.15609,-0.19666],[54.15546,-0.19451],[54.15523,-0.19156],[54.15471,-0.19015],[54.15442,-0.18664],[54.15386,-0.18507],[54.15359,-0.18008],[54.15296,-0.17786],[54.15274,-0.1749],[54.15211,-0.17312],[54.1519,-0.17153],[54.15138,-0.17027],[54.15111,-0.16846],[54.14949,-0.16497],[54.14913,-0.16444],[54.14832,-0.16385],[54.14786,-0.16313],[54.14597,-0.15927],[54.14559,-0.15811],[54.14508,-0.15457],[54.14383,-0.15159],[54.14369,-0.15023],[54.14305,-0.14855],[54.1428,-0.14679],[54.14156,-0.14392],[54.14115,-0.14179],[54.13968,-0.13826],[54.1393,-0.13634],[54.13846,-0.13465],[54.13777,-0.1342],[54.13697,-0.13313],[54.13564,-0.1306],[54.1351,-0.12909],[54.13473,-0.12752],[54.13445,-0.12275],[54.13423,-0.12148],[54.13297,-0.11823],[54.13283,-0.11694],[54.13221,-0.11485],[54.13193,-0.10638],[54.13169,-0.10601],[54.13094,-0.10579],[54.13054,-0.10536],[54.13041,-0.103],[54.1301,-0.10133],[54.12886,-0.09829],[54.12865,-0.09683],[54.1274,-0.09386],[54.127,-0.09185],[54.12661,-0.09078],[54.12575,-0.0894],[54.12511,-0.08918],[54.12471,-0.08869],[54.12442,-0.08672],[54.12222,-0.08173],[54.122,-0.07995],[54.12182,-0.07946],[54.12091,-0.07908],[54.11996,-0.07785],[54.1175,-0.07729],[54.11656,-0.07599],[54.11613,-0.07587],[54.11571,-0.07619],[54.11505,-0.07728],[54.11328,-0.07792],[54.11258,-0.07892],[54.11197,-0.07919],[54.11158,-0.07965],[54.11026,-0.082],[54.10815,-0.08656],[54.10774,-0.08856],[54.10723,-0.08978],[54.10701,-0.09149],[54.10629,-0.09387],[54.10606,-0.09684],[54.10545,-0.09857],[54.10528,-0.10022],[54.10472,-0.10161],[54.10442,-0.10512],[54.10387,-0.10644],[54.10368,-0.10817],[54.10292,-0.11062],[54.10294,-0.11287],[54.10372,-0.11566],[54.10367,-0.11652],[54.1032,-0.11776],[54.10305,-0.11889],[54.10289,-0.12335],[54.10295,-0.12928],[54.10322,-0.1323],[54.10361,-0.13325],[54.10376,-0.1346],[54.10359,-0.13678],[54.10323,-0.13772],[54.10296,-0.13919],[54.10271,-0.14335],[54.10211,-0.14556],[54.10192,-0.14844],[54.1013,-0.15023],[54.10108,-0.15191],[54.10053,-0.15341],[54.10036,-0.15754],[54.10011,-0.15897],[54.09976,-0.15978],[54.09934,-0.16181],[54.09643,-0.16825],[54.09617,-0.16985],[54.09578,-0.17095],[54.09518,-0.17206],[54.09446,-0.17256],[54.09373,-0.1735],[54.09165,-0.17719],[54.09073,-0.17779],[54.0901,-0.17886],[54.08927,-0.17934],[54.08838,-0.18054],[54.08691,-0.18096],[54.08581,-0.18217],[54.0854,-0.18238],[54.08335,-0.18282],[54.08238,-0.18405],[54.08169,-0.18444],[54.07996,-0.18767],[54.0797,-0.1884],[54.0795,-0.19013],[54.07932,-0.19059],[54.07837,-0.19105],[54.07661,-0.19397],[54.07571,-0.19454],[54.07489,-0.19581],[54.0742,-0.1961],[54.07244,-0.19898],[54.07154,-0.19948],[54.07093,-0.20055],[54.07008,-0.20101],[54.06903,-0.20242],[54.06818,-0.2028],[54.06736,-0.20408],[54.06672,-0.20426],[54.06591,-0.20554],[54.06505,-0.20601],[54.06419,-0.20725],[54.06273,-0.20766],[54.06156,-0.20884],[54.05821,-0.20924],[54.05758,-0.20945],[54.05697,-0.2102],[54.05604,-0.21052],[54.04479,-0.21119],[54.04385,-0.2115],[54.04365,-0.2119],[54.04261,-0.21242],[54.03929,-0.21288],[54.03864,-0.21359],[54.03806,-0.2139],[54.03288,-0.21434],[54.03136,-0.21485],[54.03114,-0.21525],[54.03066,-0.21556],[54.02892,-0.21588],[54.02595,-0.2156],[54.02549,-0.21528],[54.02529,-0.21486],[54.02396,-0.21433],[54.01937,-0.21391],[54.01885,-0.21359],[54.01865,-0.21316],[54.01802,-0.21285],[54.01113,-0.21224],[54.01051,-0.21192],[54.00991,-0.21118],[54.00928,-0.21097],[54.00592,-0.21054],[54.00512,-0.20959],[54.00469,-0.2098],[54.00404,-0.21077],[54.00328,-0.2108],[54.00052,-0.2096],[53.99861,-0.20916],[53.9975,-0.20788],[53.99538,-0.20745],[53.99496,-0.20723],[53.99411,-0.20616],[53.99087,-0.20555],[53.98974,-0.2043],[53.98825,-0.20388],[53.98721,-0.20261],[53.98576,-0.20221],[53.98497,-0.20115],[53.98287,-0.20071],[53.98246,-0.20051],[53.9816,-0.19952],[53.98108,-0.19932],[53.97837,-0.19893],[53.97756,-0.19787],[53.97608,-0.19741],[53.97498,-0.19619],[53.97293,-0.19576],[53.97252,-0.19555],[53.97167,-0.19448],[53.96958,-0.19404],[53.96916,-0.19383],[53.96828,-0.19279],[53.96503,-0.19226],[53.9639,-0.19101],[53.96242,-0.19052],[53.96138,-0.18925],[53.96024,-0.18906],[53.95914,-0.18785],[53.95872,-0.18765],[53.95662,-0.18722],[53.95587,-0.18617],[53.9544,-0.18576],[53.95329,-0.18451],[53.95124,-0.18413],[53.95083,-0.18393],[53.95,-0.18287],[53.94789,-0.18245],[53.94747,-0.18224],[53.94659,-0.18118],[53.94607,-0.18097],[53.94338,-0.18057],[53.94224,-0.17931],[53.94077,-0.17893],[53.9397,-0.17764],[53.93828,-0.17724],[53.93723,-0.17597],[53.93576,-0.17557],[53.93473,-0.17431],[53.93325,-0.17391],[53.93221,-0.17264],[53.93075,-0.17222],[53.92988,-0.17097],[53.92906,-0.17059],[53.92838,-0.16953],[53.92693,-0.16905],[53.92583,-0.16785],[53.92375,-0.16743],[53.92301,-0.1669],[53.92248,-0.16617],[53.91997,-0.16552],[53.91919,-0.16446],[53.91773,-0.16406],[53.91659,-0.16286],[53.9139,-0.16241],[53.91302,-0.16187],[53.9125,-0.16115],[53.91039,-0.16077],[53.90871,-0.15932],[53.90663,-0.15888],[53.90593,-0.15782],[53.9051,-0.15744],[53.9042,-0.1562],[53.90275,-0.15579],[53.90156,-0.15432],[53.9008,-0.15428],[53.9,-0.6]];
+
+</script>
+<script>
+// Local tidal knowledge for Flamborough Head, transcribed from the hand-drawn
+// map "Flamborough Head" (with compliments D. J. Lythgoe M.B.E.).
+// Hours are relative to high water at Bridlington. On this coast the flood
+// runs south and the ebb runs north.
+window.LOCAL_KNOWLEDGE = {
+  credit: 'D. J. Lythgoe M.B.E.',
+  // Low water is listed between +5 and -5.5, so it sits at about ±6.
+  key: [
+    { hour: -6, label: 'Low water', text: 'Best of ebb in offing, young flood all up shore at N. Head. No tide inside from Dykes to Cattlemere Hole.' },
+    { hour: -5.5, text: 'No tide at buoy, main flood inside at N. Head.' },
+    { hour: -5, text: 'First of flood in Bay, Dykes to Cattlemere Hole.' },
+    { hour: -4, text: 'Ebb easing away offside, good flood inside 2 mile at N. Head, good flood all over Bay.' },
+    { hour: -3, text: 'Flood everywhere. Outset Sewerby to S. Landing right inside.' },
+    { hour: -2, text: 'Flood full strength all over N. Head, up to 1½ hour before high water (300 yds). Outset Bridlington to Head End (just inside buoy).' },
+    { hour: -1, text: 'Outset to buoy.' },
+    { hour: 0, label: 'High water', text: 'Flood all over N. Head, easing inside to westward. Outset to Head End.' },
+    { hour: 1, text: 'Ebb inside to N. Landing, flood all in offing.' },
+    { hour: 2, text: 'Ebb all up shore to ½ mile off from Stottlebink to westward. Flood easing in offing.' },
+    { hour: 2.5, text: 'Ebb eased in Silex, slack water in offing. Hive starting in Silex.' },
+    { hour: 3, text: 'Ebb coming in offing (strong at Whelk Pots). Hive up to Breil (inside 10 fathoms in Silex, inside 5 fathom at Breil). Ebb Newcombe to westward.' },
+    { hour: 4, text: 'Hive to Thornwick but starting to ease in Silex ready for latter ebb. Main ebb in offing, ebb easing Dykes to Cattlemere Hole inside Bay.' },
+    { hour: 4.5, text: 'Slack in Silex before latter ebb.' },
+    { hour: 5, text: 'Complete hive Stottlebink to Thornwick. Latter ebb stacks to Stottlebink. Best of ebb all over N. Head. Ebb from Cattlemere Hole to Head End eased at buoy.' },
+    { hour: 6, label: 'Low water', text: 'Best of ebb in offing, young flood all up shore at N. Head. No tide inside from Dykes to Cattlemere Hole.' },
+  ],
+  glossary: [
+    ['Westward', 'Towards Filey'],
+    ['Inside N. Head', 'Inside the 10 fathom line'],
+    ['Inside Bay', 'Up to ¼ mile off'],
+    ['Offing', 'About 3 miles off at N. Head'],
+    ['Offside', '3 or 4 miles off at N. Head'],
+    ['Silex', 'Silex Bay (Selwicks Bay, by the lighthouse)'],
+    ['Hive', 'Flood tide inside at N. Head during the ebb'],
+    ['Outset', 'Ebb tide before high water ashore'],
+    ['Whelk Pots', '3 miles off at Breil Newk'],
+  ],
+};
+
+</script>
+<script>
+// Local names for the headland's coves, rocks and cliffs, from D. J. Lythgoe's
+// hand-drawn map. Positions are approximate (within a couple of hundred metres).
+// Generated by tools/build_geography.py.
+window.LOCAL_NAMES = [
+ {
+  "name": "Old Roll Up",
+  "lat": 54.15219,
+  "lon": -0.17201
+ },
+ {
+  "name": "Black Shelf",
+  "lat": 54.15126,
+  "lon": -0.16817
+ },
+ {
+  "name": "Mossy Shelves",
+  "lat": 54.15034,
+  "lon": -0.16618
+ },
+ {
+  "name": "Staple Newk",
+  "lat": 54.14971,
+  "lon": -0.16484
+ },
+ {
+  "name": "Side Brays",
+  "lat": 54.14893,
+  "lon": -0.16388
+ },
+ {
+  "name": "Old Dore",
+  "lat": 54.14715,
+  "lon": -0.16108
+ },
+ {
+  "name": "Stone Hole Mouth",
+  "lat": 54.14675,
+  "lon": -0.16026
+ },
+ {
+  "name": "Little Dore",
+  "lat": 54.14578,
+  "lon": -0.15777
+ },
+ {
+  "name": "Wandale Nab",
+  "lat": 54.14539,
+  "lon": -0.15513
+ },
+ {
+  "name": "Blacksmith Shop",
+  "lat": 54.14413,
+  "lon": -0.15163
+ },
+ {
+  "name": "Pinnacle",
+  "lat": 54.14366,
+  "lon": -0.14945
+ },
+ {
+  "name": "Billiard Table",
+  "lat": 54.14274,
+  "lon": -0.146
+ },
+ {
+  "name": "Cat Nab",
+  "lat": 54.14208,
+  "lon": -0.14448
+ },
+ {
+  "name": "Dyke End",
+  "lat": 54.14168,
+  "lon": -0.14333
+ },
+ {
+  "name": "White Corner",
+  "lat": 54.14108,
+  "lon": -0.14096
+ },
+ {
+  "name": "Gull Newks",
+  "lat": 54.14085,
+  "lon": -0.14042
+ },
+ {
+  "name": "Bottle Neck",
+  "lat": 54.13988,
+  "lon": -0.13805
+ },
+ {
+  "name": "Close Newks",
+  "lat": 54.13964,
+  "lon": -0.13689
+ },
+ {
+  "name": "Sanwick Brigg",
+  "lat": 54.13784,
+  "lon": -0.13381
+ },
+ {
+  "name": "Sanwick Langness",
+  "lat": 54.1351,
+  "lon": -0.12804
+ },
+ {
+  "name": "Amphitheatre",
+  "lat": 54.13475,
+  "lon": -0.12407
+ },
+ {
+  "name": "Chatterthrow",
+  "lat": 54.134,
+  "lon": -0.1202
+ },
+ {
+  "name": "Little Thornwick",
+  "lat": 54.13353,
+  "lon": -0.11897
+ },
+ {
+  "name": "White Cliff",
+  "lat": 54.13291,
+  "lon": -0.11636
+ },
+ {
+  "name": "Thornwick Scar",
+  "lat": 54.13234,
+  "lon": -0.11196
+ },
+ {
+  "name": "Smugglers",
+  "lat": 54.13228,
+  "lon": -0.11007
+ },
+ {
+  "name": "Church Cave",
+  "lat": 54.13223,
+  "lon": -0.10886
+ },
+ {
+  "name": "West Scar",
+  "lat": 54.1315,
+  "lon": -0.10557
+ },
+ {
+  "name": "Joe Whitley Hole",
+  "lat": 54.13098,
+  "lon": -0.10538
+ },
+ {
+  "name": "Gort",
+  "lat": 54.1305,
+  "lon": -0.10221
+ },
+ {
+  "name": "Horse Hole",
+  "lat": 54.13019,
+  "lon": -0.10088
+ },
+ {
+  "name": "Old Lifeboat House",
+  "lat": 54.12984,
+  "lon": -0.10001
+ },
+ {
+  "name": "Robin Lythes Hole",
+  "lat": 54.12922,
+  "lon": -0.09851
+ },
+ {
+  "name": "East Scar",
+  "lat": 54.12909,
+  "lon": -0.09818
+ },
+ {
+  "name": "Five Arches",
+  "lat": 54.12899,
+  "lon": -0.09758
+ },
+ {
+  "name": "Newcombe",
+  "lat": 54.12888,
+  "lon": -0.0968
+ },
+ {
+  "name": "Cooness",
+  "lat": 54.12839,
+  "lon": -0.09557
+ },
+ {
+  "name": "Carter Lane",
+  "lat": 54.1277,
+  "lon": -0.09392
+ },
+ {
+  "name": "Panniman Scars",
+  "lat": 54.12732,
+  "lon": -0.09224
+ },
+ {
+  "name": "Saddles",
+  "lat": 54.12697,
+  "lon": -0.09103
+ },
+ {
+  "name": "King Rock",
+  "lat": 54.12671,
+  "lon": -0.08842,
+  "kind": "rock"
+ },
+ {
+  "name": "Breil Newk",
+  "lat": 54.12564,
+  "lon": -0.08897
+ },
+ {
+  "name": "Petrel Hole",
+  "lat": 54.12516,
+  "lon": -0.08877
+ },
+ {
+  "name": "Breil Flats",
+  "lat": 54.12491,
+  "lon": -0.08846
+ },
+ {
+  "name": "Breil Head",
+  "lat": 54.12478,
+  "lon": -0.08756
+ },
+ {
+  "name": "Butchers Shop",
+  "lat": 54.12447,
+  "lon": -0.08619
+ },
+ {
+  "name": "Cradle Head",
+  "lat": 54.12403,
+  "lon": -0.08518
+ },
+ {
+  "name": "Swineshaw Hole",
+  "lat": 54.12384,
+  "lon": -0.08477
+ },
+ {
+  "name": "Fall Hole",
+  "lat": 54.12333,
+  "lon": -0.08361
+ },
+ {
+  "name": "Scout Hole",
+  "lat": 54.12257,
+  "lon": -0.0819
+ },
+ {
+  "name": "West Newk",
+  "lat": 54.12244,
+  "lon": -0.08163
+ },
+ {
+  "name": "Stottlebink",
+  "lat": 54.12236,
+  "lon": -0.08101
+ },
+ {
+  "name": "East Newk",
+  "lat": 54.1223,
+  "lon": -0.08051
+ },
+ {
+  "name": "Limekilns",
+  "lat": 54.12223,
+  "lon": -0.07988
+ },
+ {
+  "name": "Kindle Scar",
+  "lat": 54.1217,
+  "lon": -0.07902
+ },
+ {
+  "name": "Molk Hole",
+  "lat": 54.12101,
+  "lon": -0.07873
+ },
+ {
+  "name": "Adam",
+  "lat": 54.12031,
+  "lon": -0.07783
+ },
+ {
+  "name": "Common Hole",
+  "lat": 54.1194,
+  "lon": -0.07733
+ },
+ {
+  "name": "Churchyard Cave",
+  "lat": 54.11912,
+  "lon": -0.07727
+ },
+ {
+  "name": "Pigeon Hole",
+  "lat": 54.11862,
+  "lon": -0.07716
+ },
+ {
+  "name": "Gun House",
+  "lat": 54.11827,
+  "lon": -0.07708
+ },
+ {
+  "name": "Mathon Sands",
+  "lat": 54.11764,
+  "lon": -0.07693
+ },
+ {
+  "name": "Greenstacks",
+  "lat": 54.11734,
+  "lon": -0.07658
+ },
+ {
+  "name": "Green Stacks Pinnacle",
+  "lat": 54.11703,
+  "lon": -0.07615
+ },
+ {
+  "name": "Stacks Pinnacle",
+  "lat": 54.11676,
+  "lon": -0.07577
+ },
+ {
+  "name": "Gutters",
+  "lat": 54.11573,
+  "lon": -0.07575
+ },
+ {
+  "name": "Hedge Newk",
+  "lat": 54.11404,
+  "lon": -0.07725
+ },
+ {
+  "name": "Cattlemere Hole",
+  "lat": 54.1129,
+  "lon": -0.07796
+ },
+ {
+  "name": "Drever Dock",
+  "lat": 54.11194,
+  "lon": -0.07881
+ },
+ {
+  "name": "Truckway",
+  "lat": 54.11114,
+  "lon": -0.07989
+ },
+ {
+  "name": "Old Fall",
+  "lat": 54.10976,
+  "lon": -0.08247
+ },
+ {
+  "name": "New Fall",
+  "lat": 54.10823,
+  "lon": -0.08575
+ },
+ {
+  "name": "Galley Dock",
+  "lat": 54.1078,
+  "lon": -0.08711
+ },
+ {
+  "name": "Syke",
+  "lat": 54.10636,
+  "lon": -0.09281
+ },
+ {
+  "name": "Sand Hole",
+  "lat": 54.10585,
+  "lon": -0.09666
+ },
+ {
+  "name": "High Sand Hole",
+  "lat": 54.1056,
+  "lon": -0.09742
+ },
+ {
+  "name": "East Newk",
+  "lat": 54.10364,
+  "lon": -0.10644
+ },
+ {
+  "name": "Welk Holes",
+  "lat": 54.10185,
+  "lon": -0.11132,
+  "kind": "rock"
+ },
+ {
+  "name": "Quay Hole",
+  "lat": 54.10305,
+  "lon": -0.11418
+ },
+ {
+  "name": "Brigg Hole",
+  "lat": 54.10335,
+  "lon": -0.11665
+ },
+ {
+  "name": "New Lifeboat House",
+  "lat": 54.1031,
+  "lon": -0.11733
+ },
+ {
+  "name": "Roger Sellars Rock",
+  "lat": 54.10191,
+  "lon": -0.12064,
+  "kind": "rock"
+ },
+ {
+  "name": "West Newk",
+  "lat": 54.10274,
+  "lon": -0.12113
+ }
 ];
 
 </script>
@@ -2064,6 +2705,8 @@ window.LAND_OUTLINE = [
 (function () {
   const DATA = window.TIDAL_DATA;
   const LAND = window.LAND_OUTLINE;
+  const LOCAL = window.LOCAL_KNOWLEDGE || { key: [], glossary: [] };
+  const LOCAL_NAMES = window.LOCAL_NAMES || [];
   const diamonds = DATA.diamonds;
   const byId = Object.fromEntries(diamonds.map((d) => [d.id, d]));
 
@@ -2113,7 +2756,7 @@ window.LAND_OUTLINE = [
     center: [54.112, -0.12],
     zoom: window.matchMedia('(max-width: 820px)').matches ? 11 : 12,
     minZoom: 10,
-    maxZoom: 15,
+    maxZoom: 16,
     maxBounds: [[53.85, -0.6], [54.38, 0.4]],
     zoomControl: false,
   });
@@ -2208,8 +2851,8 @@ window.LAND_OUTLINE = [
   const eddyPaths = {
     S: [[54.074, -0.172], [54.090, -0.140], [54.100, -0.108], [54.104, -0.082], [54.097, -0.062],
       [54.082, -0.068], [54.070, -0.098], [54.064, -0.135], [54.066, -0.160], [54.074, -0.172]],
-    N: [[54.150, -0.160], [54.141, -0.125], [54.132, -0.098], [54.124, -0.078], [54.131, -0.062],
-      [54.145, -0.068], [54.158, -0.095], [54.162, -0.135], [54.158, -0.158], [54.150, -0.160]],
+    N: [[54.142, -0.130], [54.136, -0.112], [54.131, -0.098], [54.1245, -0.082], [54.121, -0.072],
+      [54.128, -0.060], [54.140, -0.064], [54.150, -0.088], [54.151, -0.118], [54.142, -0.130]],
   };
   const eddyLayers = {};
   for (const k of Object.keys(eddyPaths)) {
@@ -2220,6 +2863,8 @@ window.LAND_OUTLINE = [
     ['Filey Bay', 54.185, -0.24],
     ['Bridlington Bay', 54.060, -0.115],
     ['Smithic Sands', 54.077, -0.178],
+    ['Thornwick Bay', 54.1385, -0.117],
+    ['Silex', 54.1245, -0.067],
     ['Tide race', 54.105, -0.022],
     ['North Sea', 54.170, 0.06],
   ];
@@ -2230,6 +2875,27 @@ window.LAND_OUTLINE = [
       icon: L.divIcon({ className: 'water-label', html: `<span>${text}</span>`, iconSize: [0, 0] }),
     }).addTo(map);
   }
+
+  // Local names for the coves, rocks and cliffs: dots from zoom 13 (name on
+  // hover or tap), labels from zoom 15.
+  for (const n of LOCAL_NAMES) {
+    L.marker([n.lat, n.lon], {
+      keyboard: false,
+      icon: L.divIcon({
+        className: `local-name${n.kind === 'rock' ? ' rock' : ''}`,
+        html: `<span class="ln-dot"></span><span class="ln-text">${n.name}</span>`,
+        iconSize: [10, 10],
+        iconAnchor: [5, 5],
+      }),
+    }).bindTooltip(n.name, { direction: 'top', offset: [0, -4], className: 'ln-tip' }).addTo(map);
+  }
+  function zoomClass() {
+    const z = map.getZoom(), c = map.getContainer().classList;
+    c.toggle('show-local', z >= 13);
+    c.toggle('show-local-text', z >= 15);
+  }
+  map.on('zoomend', zoomClass);
+  zoomClass();
 
   // Tidal diamond markers: ADMIRALTY-style magenta diamond plus a live arrow.
   const markers = {};
@@ -2296,8 +2962,31 @@ window.LAND_OUTLINE = [
     particles.length = target;
   }
 
+  // Land mask as a raster, filled row by row from the coastline polygon, so
+  // the per-frame sea test is a lookup rather than a point-in-polygon test.
+  const MASK_STEP = 0.0004; // degrees, about 45 m of latitude
+  const MASK_ROWS = Math.ceil((DOMAIN.n - DOMAIN.s) / MASK_STEP);
+  const MASK_COLS = Math.ceil((DOMAIN.e - DOMAIN.w) / MASK_STEP);
+  const landMask = new Uint8Array(MASK_ROWS * MASK_COLS);
+  for (let r = 0; r < MASK_ROWS; r++) {
+    const lat = DOMAIN.s + (r + 0.5) * MASK_STEP;
+    const xs = [];
+    for (let i = 0, j = LAND.length - 1; i < LAND.length; j = i++) {
+      const [yi, xi] = LAND[i], [yj, xj] = LAND[j];
+      if ((yi > lat) !== (yj > lat)) xs.push(xi + ((lat - yi) * (xj - xi)) / (yj - yi));
+    }
+    xs.sort((a, b) => a - b);
+    for (let k = 0; k + 1 < xs.length; k += 2) {
+      const c0 = Math.max(0, Math.ceil((xs[k] - DOMAIN.w) / MASK_STEP - 0.5));
+      const c1 = Math.min(MASK_COLS - 1, Math.floor((xs[k + 1] - DOMAIN.w) / MASK_STEP - 0.5));
+      for (let c = c0; c <= c1; c++) landMask[r * MASK_COLS + c] = 1;
+    }
+  }
+
   function isSea(lat, lon) {
-    return lat > DOMAIN.s && lat < DOMAIN.n && lon > DOMAIN.w && lon < DOMAIN.e && !Tides.inPolygon(lat, lon, LAND);
+    if (!(lat > DOMAIN.s && lat < DOMAIN.n && lon > DOMAIN.w && lon < DOMAIN.e)) return false;
+    const r = Math.floor((lat - DOMAIN.s) / MASK_STEP), c = Math.floor((lon - DOMAIN.w) / MASK_STEP);
+    return !landMask[r * MASK_COLS + c];
   }
 
   function spawn(p) {
@@ -2407,11 +3096,11 @@ window.LAND_OUTLINE = [
     const rv = Tides.diamondVector(race, state.hour, state.spring);
     const r = Tides.fromVector(rv.u, rv.v);
     const s = strengthWord(race);
-    const going = rv.v < 0 ? 'south-going' : 'north-going';
+    const going = rv.v < 0 ? 'flood (south-going)' : 'ebb (north-going)';
     if (s.word === 'slack') {
       out.push(`<p><strong>Off the head it is slack water.</strong> The stream is turning; this is the calmest time to round Flamborough Head.</p>`);
     } else {
-      out.push(`<p><strong>The ${going} stream is ${s.text}</strong>, running ${Tides.compass(r.set)} at about ${fmt1(r.rate)} kn through the race (diamond ${race.id}).</p>`);
+      out.push(`<p><strong>The ${going} is ${s.text}</strong>, running ${Tides.compass(r.set)} at about ${fmt1(r.rate)} kn through the race (diamond ${race.id}).</p>`);
     }
 
     const ov = Tides.diamondVector(offshore, state.hour, state.spring);
@@ -2422,10 +3111,13 @@ window.LAND_OUTLINE = [
       out.push(`<p>Offshore (diamond ${offshore.id}) the stream is still running ${Tides.compass(o.set)} at ${fmt1(o.rate)} kn: the head turns first.</p>`);
     }
 
-    for (const [d, where] of [[eddyS, 'Eddy in Bridlington Bay'], [eddyN, 'Eddy off North Landing']]) {
-      if (!d) continue;
-      const a = eddyActive(d);
-      if (a) out.push(`<p><strong>${where}:</strong> inshore water (diamond ${d.id}) is running ${Tides.compass(a.set)}, against the main stream, back towards the head.</p>`);
+    for (const d of [eddyN, eddyS]) {
+      const a = d && eddyActive(d);
+      if (a) out.push(`<p><strong>${a.title}:</strong> ${a.text}</p>`);
+    }
+    if (eddyS && r.rate > 0.5) {
+      const g = Tides.diamondVector(eddyS, state.hour, state.spring);
+      if (Math.hypot(g.u, g.v) < 0.1) out.push(`<p><strong>Slack in the bay:</strong> no tide inside Bridlington Bay from Dykes to Cattlemere Hole (diamond ${eddyS.id}), while the main stream runs outside.</p>`);
     }
 
     const wa = windAgainstTide();
@@ -2437,12 +3129,42 @@ window.LAND_OUTLINE = [
     return out.join('');
   }
 
-  // An eddy is running when its inshore diamond flows the opposite way to the race.
+  // The local tidal key entry for the current time: the latest one at or before it.
+  function localEntry() {
+    let e = null;
+    for (const k of LOCAL.key) if (k.hour <= state.hour + 1e-6) e = k;
+    return e;
+  }
+
+  function renderLocal() {
+    const e = localEntry();
+    if (!e) return;
+    const when = e.label || (e.hour === 0 ? 'High water' : `HW${e.hour > 0 ? '+' : '−'}${String(Math.abs(e.hour)).replace('.5', '½')}`);
+    $('local-when').textContent = when;
+    $('local-text').textContent = e.text;
+  }
+
+  // Inshore water running against the race. Its local name depends on which
+  // way it is going: towards the head end against the ebb is the hive (north
+  // side) or the outset (Bridlington Bay); against the flood it is the inshore
+  // ebb running before the offing turns.
   function eddyActive(d) {
     const rv = Tides.diamondVector(race, state.hour, state.spring);
     const ev = Tides.diamondVector(d, state.hour, state.spring);
     const r = Tides.fromVector(rv.u, rv.v), e = Tides.fromVector(ev.u, ev.v);
-    return r.rate > 0.4 && e.rate > 0.15 && Tides.angleBetween(r.set, e.set) > 90 ? e : null;
+    if (!(r.rate > 0.4 && e.rate > 0.15 && Tides.angleBetween(r.set, e.set) > 90)) return null;
+    const raceFlooding = rv.v < 0;
+    const dir = `${Tides.compass(e.set)} at ${fmt1(e.rate)} kn`;
+    if (d.eddy === 'N') {
+      return raceFlooding
+        ? { ...e, title: 'Ebb inside, flood in the offing', text: `inside the 10 fathom line off North Landing (diamond ${d.id}) the ebb has started, running ${dir}, while the flood still runs outside.` }
+        : state.hour >= 5.5 || state.hour < -4
+          ? { ...e, title: 'Young flood inshore', text: `the flood has started up shore at North Head (diamond ${d.id}, ${dir}) while the best of the ebb still runs in the offing.` }
+          : { ...e, title: 'The hive', text: `a flood tide inside at North Head during the ebb. Off North Landing (diamond ${d.id}) the inshore water runs ${dir}, towards the head end.` };
+    }
+    return raceFlooding
+      ? { ...e, title: 'The outset', text: `the ebb running ashore before high water. Inside Bridlington Bay (diamond ${d.id}) the water runs ${dir}, back towards the head end against the flood.` }
+      : { ...e, title: 'Inshore in the bay', text: `the water inside the bay (diamond ${d.id}) runs ${dir}, against the main stream.` };
   }
 
   function windAgainstTide() {
@@ -2605,12 +3327,24 @@ window.LAND_OUTLINE = [
     updateChartCursor();
 
     $('narrative').innerHTML = narrative();
+    renderLocal();
+    $('height-label').textContent = DATA.levels ? `Height ≈ ${fmt1(tideHeight(state.hour))} m` : '';
     for (const [k, d2] of [['S', eddyS], ['N', eddyN]]) {
       const p = eddyLayers[k].getElement();
       if (p && d2) p.classList.toggle('active', !!eddyActive(d2));
     }
     raceZone.getElement()?.classList.toggle('active', !!windAgainstTide());
     updateMarkers();
+  }
+
+  // Estimated height of tide at the reference port: a cosine curve between
+  // high and low water, with both scaled between neaps and springs.
+  function tideHeight(h) {
+    const { MHWS, MHWN, MLWN, MLWS } = DATA.levels;
+    const typed = parseFloat($('hw-height').value);
+    const hw = Number.isFinite(typed) ? typed : MHWN + (MHWS - MHWN) * state.spring;
+    const lw = MLWN - (MLWN - MLWS) * state.spring;
+    return lw + (hw - lw) * (1 + Math.cos((Math.PI * h) / (PERIOD / 2))) / 2;
   }
 
   function setHour(h, fromPlay) {
@@ -2628,34 +3362,34 @@ window.LAND_OUTLINE = [
   // "Why it's unusual" list: each item can jump the map to the moment it shows.
   const features = [
     {
-      title: 'A tide race off the point',
-      body: `The chalk headland juts several kilometres out from the line of the coast, so the North Sea stream has to squeeze round it. Off the tip it speeds up to around 3 kn at springs, far faster than in the bays either side. With wind against tide this produces dangerous overfalls; pilots advise at least a 2 nm offing.`,
-      go: { hour: -3, spring: 1, center: [54.118, -0.06], zoom: 12, select: race.id, wind: '180' },
+      title: 'A tide race off the head end',
+      body: `The chalk headland juts several kilometres out from the line of the coast, so the North Sea stream has to squeeze round it. Off the head end it reaches around 3 kn at springs, far faster than in the bays either side. With wind against tide this throws up dangerous overfalls; pilots advise at least a 2 nm offing.`,
+      go: { hour: -2, spring: 1, center: [54.118, -0.06], zoom: 12, select: race.id, wind: '180' },
     },
     {
-      title: 'Seven hours south, five and a half north',
-      body: `The south-going stream starts about 6 h before HW Hull and runs until about 1 h after it. The north-going stream then has only the remaining 5½ hours. Watch the chart: the curve spends longer above the line than below it.`,
-      go: { hour: 1, spring: 1, center: [54.112, -0.08], zoom: 11, select: offshore.id },
-    },
-    {
-      title: 'It turns at the head first',
-      body: `Close in to the head the stream turns about half an hour before it does a few miles offshore. For a short time the water in the race and the open sea run in opposite directions.`,
-      go: { hour: 0.5, spring: 1, center: [54.115, -0.03], zoom: 12, select: race.id },
-    },
-    eddyS && {
-      title: 'The Bridlington Bay eddy',
-      body: `When the stream runs south, the head shelters Bridlington Bay. Water peels off the point and a slow clockwise eddy turns in the bay, so close inshore by South Landing the stream runs north-east, back towards the head, against the main flow.`,
-      go: { hour: -3, spring: 1, center: [54.088, -0.11], zoom: 13, select: eddyS.id },
+      title: 'Ebb inside, flood in the offing',
+      body: `"+1 hour: Ebb inside to N. Landing, flood all in offing." The inshore water turns first. For a couple of hours after high water the ebb runs north-west along the shore while the flood is still running south outside, until it goes slack in the offing at HW+2½.`,
+      go: { hour: 1.25, spring: 1, center: [54.125, -0.07], zoom: 12, select: eddyN ? eddyN.id : race.id },
     },
     eddyN && {
-      title: 'The north-side eddy',
-      body: `On the north-going stream the lee side swaps. A smaller anticlockwise eddy forms off Thornwick and North Landing, and inshore water keeps running south-east towards the head. In both inshore spots the set hardly ever reverses.`,
-      go: { hour: 3, spring: 1, center: [54.14, -0.1], zoom: 13, select: eddyN.id },
+      title: 'The hive',
+      body: `"Flood tide inside at N. Head during ebb." From HW+2½ a flood starts again in Silex (Selwicks Bay) while the main ebb runs north offshore. It spreads up to Breil by +3 and Thornwick by +4, and is complete from Stottlebink to Thornwick by +5. Inshore on the north side the water runs towards the head end for most of the tide.`,
+      go: { hour: 4, spring: 1, center: [54.128, -0.095], zoom: 13, select: eddyN.id },
+    },
+    eddyS && {
+      title: 'The outset',
+      body: `"Ebb tide before high water ashore." In Bridlington Bay the flood runs only from about HW−5. At HW−3 the outset starts right inside from Sewerby to South Landing, running back towards the head end. It reaches out to the buoy by HW−1 and to the head end by high water.`,
+      go: { hour: -2, spring: 1, center: [54.098, -0.11], zoom: 13, select: eddyS.id },
     },
     {
-      title: 'Quiet water on the Smithic Sands',
-      body: `Inside Bridlington Bay the streams are weak and turn later than outside. That, and the shelter the head gives from northerly weather, is why Bridlington Bay has long been an anchorage for ships waiting out a gale.`,
-      go: { hour: -2, spring: 1, center: [54.075, -0.15], zoom: 12, select: 'H' },
+      title: 'Strong ebb at the Whelk Pots',
+      body: `"+3 hours: Ebb coming in offing (strong at Whelk Pots)." Three miles off Breil Newk the ebb comes in hard soon after it starts, and by +5 the best of the ebb runs all over North Head.`,
+      go: { hour: 3.5, spring: 1, center: [54.14, -0.05], zoom: 12, select: 'W' },
+    },
+    {
+      title: 'No tide in the bay at low water',
+      body: `"Low water: No tide inside from Dykes to Cattlemere Hole." While the best of the ebb runs in the offing, the inshore water of Bridlington Bay, from Danes Dyke to the head end, is slack. That and the shelter from northerly weather is why the bay has long been an anchorage.`,
+      go: { hour: 6, spring: 1, center: [54.098, -0.11], zoom: 12, select: eddyS ? eddyS.id : 'H' },
     },
   ].filter(Boolean);
 
@@ -2704,6 +3438,14 @@ window.LAND_OUTLINE = [
     try { localStorage.setItem('hwTime', JSON.stringify({ v, day: new Date().toDateString() })); } catch (_) { /* storage unavailable */ }
     render();
   });
+  $('hw-height').addEventListener('input', (e) => {
+    const h = parseFloat(e.target.value);
+    if (!Number.isFinite(h)) return;
+    const { MHWS, MHWN } = DATA.levels;
+    state.spring = Math.min(1, Math.max(0, (h - MHWN) / (MHWS - MHWN)));
+    $('range').value = state.spring;
+    render();
+  });
   $('now').addEventListener('click', () => {
     const d = new Date();
     let h = (d.getHours() * 60 + d.getMinutes() - state.hwMinutes) / 60;
@@ -2724,6 +3466,14 @@ window.LAND_OUTLINE = [
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => { map.invalidateSize(); sizeCanvas(); drawChart(); }, 150);
   });
+
+  $('glossary').replaceChildren(...LOCAL.glossary.map(([term, def]) => {
+    const dt = document.createElement('dt'); dt.textContent = term;
+    const dd = document.createElement('dd'); dd.textContent = def;
+    const div = document.createElement('div'); div.append(dt, dd);
+    return div;
+  }));
+  if (LOCAL.credit) $('local-credit').textContent = `From the tidal key on ${LOCAL.credit}'s map of Flamborough Head.`;
 
   readColors();
   sizeCanvas();

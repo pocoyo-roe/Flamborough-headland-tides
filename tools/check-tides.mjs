@@ -8,7 +8,9 @@ const T = require('../js/tides.js');
 globalThis.window = {};
 require('../data/tidal-diamonds.js');
 require('../data/coastline.js');
-const { TIDAL_DATA: data, LAND_OUTLINE: land } = globalThis.window;
+require('../data/local-knowledge.js');
+require('../data/local-names.js');
+const { TIDAL_DATA: data, LAND_OUTLINE: land, LOCAL_KNOWLEDGE: local, LOCAL_NAMES: names } = globalThis.window;
 
 const close = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) < eps, `${a} != ${b}`);
 
@@ -42,4 +44,13 @@ for (const d of data.diamonds) {
 assert.ok(T.inPolygon(54.115, -0.12, land));
 assert.ok(!T.inPolygon(54.118, -0.04, land));
 
-console.log(`ok: ${data.diamonds.length} diamonds checked`);
+// local tidal key runs in time order across the whole cycle
+const hours = local.key.map((k) => k.hour);
+assert.deepEqual(hours, [...hours].sort((a, b) => a - b));
+assert.ok(hours[0] === -6 && hours.at(-1) === 6);
+
+// local names sit on the shoreline, within ~300 m of it
+const nearCoast = (n) => land.some(([la, lo]) => T.distKm(n.lat, n.lon, la, lo) < 0.3);
+for (const n of names) assert.ok(nearCoast(n), `${n.name} is not near the coast`);
+
+console.log(`ok: ${data.diamonds.length} diamonds, ${local.key.length} local key entries, ${names.length} local names checked`);

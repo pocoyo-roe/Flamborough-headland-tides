@@ -341,3 +341,28 @@ summary { cursor: pointer; font-size: 0.9rem; color: var(--text-2); }
 .leaflet-control-attribution a { color: var(--accent); }
 .leaflet-bar a, .leaflet-bar a:hover { background: var(--surface); color: var(--text); border-bottom-color: var(--border); }
 .leaflet-bar { border-color: var(--border) !important; }
+
+/* ---------------------------------------------------------------- local knowledge */
+.local-key { margin: 10px 0 0; padding: 10px 12px; background: var(--surface-2); border-radius: 8px; }
+.local-key figcaption { font-size: 0.8rem; color: var(--text-2); font-family: var(--font-data); }
+.eyebrow { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.7rem; color: var(--muted); font-family: var(--font-ui); }
+.local-key blockquote { margin: 4px 0 0; font-family: var(--font-display); font-style: italic; font-size: 1rem; line-height: 1.45; }
+.glossary { display: grid; gap: 6px; margin: 8px 0; }
+.glossary div { display: grid; grid-template-columns: 7.5em 1fr; gap: 8px; }
+.glossary dt { font-weight: 600; }
+.glossary dd { margin: 0; color: var(--text-2); min-width: 0; }
+#hw-height { width: 6.5em; font: inherit; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; }
+
+.local-name { display: none; }
+.show-local .local-name { display: block; }
+.ln-dot { position: absolute; left: 3px; top: 3px; width: 4px; height: 4px; border-radius: 50%; background: var(--land-edge); }
+.local-name.rock .ln-dot { width: 6px; height: 6px; left: 2px; top: 2px; background: none; border: 1.5px solid var(--land-edge); }
+.ln-text {
+  display: none; position: absolute; left: 10px; top: -3px; white-space: nowrap;
+  font-size: 10.5px; color: var(--text-2);
+  text-shadow: 0 0 3px var(--sea), 0 0 3px var(--sea), 0 0 3px var(--sea);
+}
+.show-local-text .ln-text { display: block; }
+.show-local-text .leaflet-tooltip.ln-tip { display: none; }
+.leaflet-tooltip.ln-tip { background: var(--surface); color: var(--text); border-color: var(--border); font: 12px var(--font-ui); }
+.leaflet-tooltip.ln-tip::before { border-top-color: var(--border); }

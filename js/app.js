@@ -2,6 +2,8 @@
 (function () {
   const DATA = window.TIDAL_DATA;
   const LAND = window.LAND_OUTLINE;
+  const LOCAL = window.LOCAL_KNOWLEDGE || { key: [], glossary: [] };
+  const LOCAL_NAMES = window.LOCAL_NAMES || [];
   const diamonds = DATA.diamonds;
   const byId = Object.fromEntries(diamonds.map((d) => [d.id, d]));
 
@@ -51,7 +53,7 @@
     center: [54.112, -0.12],
     zoom: window.matchMedia('(max-width: 820px)').matches ? 11 : 12,
     minZoom: 10,
-    maxZoom: 15,
+    maxZoom: 16,
     maxBounds: [[53.85, -0.6], [54.38, 0.4]],
     zoomControl: false,
   });
@@ -146,8 +148,8 @@
   const eddyPaths = {
     S: [[54.074, -0.172], [54.090, -0.140], [54.100, -0.108], [54.104, -0.082], [54.097, -0.062],
       [54.082, -0.068], [54.070, -0.098], [54.064, -0.135], [54.066, -0.160], [54.074, -0.172]],
-    N: [[54.150, -0.160], [54.141, -0.125], [54.132, -0.098], [54.124, -0.078], [54.131, -0.062],
-      [54.145, -0.068], [54.158, -0.095], [54.162, -0.135], [54.158, -0.158], [54.150, -0.160]],
+    N: [[54.142, -0.130], [54.136, -0.112], [54.131, -0.098], [54.1245, -0.082], [54.121, -0.072],
+      [54.128, -0.060], [54.140, -0.064], [54.150, -0.088], [54.151, -0.118], [54.142, -0.130]],
   };
   const eddyLayers = {};
   for (const k of Object.keys(eddyPaths)) {
@@ -158,6 +160,8 @@
     ['Filey Bay', 54.185, -0.24],
     ['Bridlington Bay', 54.060, -0.115],
     ['Smithic Sands', 54.077, -0.178],
+    ['Thornwick Bay', 54.1385, -0.117],
+    ['Silex', 54.1245, -0.067],
     ['Tide race', 54.105, -0.022],
     ['North Sea', 54.170, 0.06],
   ];
@@ -168,6 +172,27 @@
       icon: L.divIcon({ className: 'water-label', html: `<span>${text}</span>`, iconSize: [0, 0] }),
     }).addTo(map);
   }
+
+  // Local names for the coves, rocks and cliffs: dots from zoom 13 (name on
+  // hover or tap), labels from zoom 15.
+  for (const n of LOCAL_NAMES) {
+    L.marker([n.lat, n.lon], {
+      keyboard: false,
+      icon: L.divIcon({
+        className: `local-name${n.kind === 'rock' ? ' rock' : ''}`,
+        html: `<span class="ln-dot"></span><span class="ln-text">${n.name}</span>`,
+        iconSize: [10, 10],
+        iconAnchor: [5, 5],
+      }),
+    }).bindTooltip(n.name, { direction: 'top', offset: [0, -4], className: 'ln-tip' }).addTo(map);
+  }
+  function zoomClass() {
+    const z = map.getZoom(), c = map.getContainer().classList;
+    c.toggle('show-local', z >= 13);
+    c.toggle('show-local-text', z >= 15);
+  }
+  map.on('zoomend', zoomClass);
+  zoomClass();
 
   // Tidal diamond markers: ADMIRALTY-style magenta diamond plus a live arrow.
   const markers = {};
@@ -234,8 +259,31 @@
     particles.length = target;
   }
 
+  // Land mask as a raster, filled row by row from the coastline polygon, so
+  // the per-frame sea test is a lookup rather than a point-in-polygon test.
+  const MASK_STEP = 0.0004; // degrees, about 45 m of latitude
+  const MASK_ROWS = Math.ceil((DOMAIN.n - DOMAIN.s) / MASK_STEP);
+  const MASK_COLS = Math.ceil((DOMAIN.e - DOMAIN.w) / MASK_STEP);
+  const landMask = new Uint8Array(MASK_ROWS * MASK_COLS);
+  for (let r = 0; r < MASK_ROWS; r++) {
+    const lat = DOMAIN.s + (r + 0.5) * MASK_STEP;
+    const xs = [];
+    for (let i = 0, j = LAND.length - 1; i < LAND.length; j = i++) {
+      const [yi, xi] = LAND[i], [yj, xj] = LAND[j];
+      if ((yi > lat) !== (yj > lat)) xs.push(xi + ((lat - yi) * (xj - xi)) / (yj - yi));
+    }
+    xs.sort((a, b) => a - b);
+    for (let k = 0; k + 1 < xs.length; k += 2) {
+      const c0 = Math.max(0, Math.ceil((xs[k] - DOMAIN.w) / MASK_STEP - 0.5));
+      const c1 = Math.min(MASK_COLS - 1, Math.floor((xs[k + 1] - DOMAIN.w) / MASK_STEP - 0.5));
+      for (let c = c0; c <= c1; c++) landMask[r * MASK_COLS + c] = 1;
+    }
+  }
+
   function isSea(lat, lon) {
-    return lat > DOMAIN.s && lat < DOMAIN.n && lon > DOMAIN.w && lon < DOMAIN.e && !Tides.inPolygon(lat, lon, LAND);
+    if (!(lat > DOMAIN.s && lat < DOMAIN.n && lon > DOMAIN.w && lon < DOMAIN.e)) return false;
+    const r = Math.floor((lat - DOMAIN.s) / MASK_STEP), c = Math.floor((lon - DOMAIN.w) / MASK_STEP);
+    return !landMask[r * MASK_COLS + c];
   }
 
   function spawn(p) {
@@ -345,11 +393,11 @@
     const rv = Tides.diamondVector(race, state.hour, state.spring);
     const r = Tides.fromVector(rv.u, rv.v);
     const s = strengthWord(race);
-    const going = rv.v < 0 ? 'south-going' : 'north-going';
+    const going = rv.v < 0 ? 'flood (south-going)' : 'ebb (north-going)';
     if (s.word === 'slack') {
       out.push(`<p><strong>Off the head it is slack water.</strong> The stream is turning; this is the calmest time to round Flamborough Head.</p>`);
     } else {
-      out.push(`<p><strong>The ${going} stream is ${s.text}</strong>, running ${Tides.compass(r.set)} at about ${fmt1(r.rate)} kn through the race (diamond ${race.id}).</p>`);
+      out.push(`<p><strong>The ${going} is ${s.text}</strong>, running ${Tides.compass(r.set)} at about ${fmt1(r.rate)} kn through the race (diamond ${race.id}).</p>`);
     }
 
     const ov = Tides.diamondVector(offshore, state.hour, state.spring);
@@ -360,10 +408,13 @@
       out.push(`<p>Offshore (diamond ${offshore.id}) the stream is still running ${Tides.compass(o.set)} at ${fmt1(o.rate)} kn: the head turns first.</p>`);
     }
 
-    for (const [d, where] of [[eddyS, 'Eddy in Bridlington Bay'], [eddyN, 'Eddy off North Landing']]) {
-      if (!d) continue;
-      const a = eddyActive(d);
-      if (a) out.push(`<p><strong>${where}:</strong> inshore water (diamond ${d.id}) is running ${Tides.compass(a.set)}, against the main stream, back towards the head.</p>`);
+    for (const d of [eddyN, eddyS]) {
+      const a = d && eddyActive(d);
+      if (a) out.push(`<p><strong>${a.title}:</strong> ${a.text}</p>`);
+    }
+    if (eddyS && r.rate > 0.5) {
+      const g = Tides.diamondVector(eddyS, state.hour, state.spring);
+      if (Math.hypot(g.u, g.v) < 0.1) out.push(`<p><strong>Slack in the bay:</strong> no tide inside Bridlington Bay from Dykes to Cattlemere Hole (diamond ${eddyS.id}), while the main stream runs outside.</p>`);
     }
 
     const wa = windAgainstTide();
@@ -375,12 +426,42 @@
     return out.join('');
   }
 
-  // An eddy is running when its inshore diamond flows the opposite way to the race.
+  // The local tidal key entry for the current time: the latest one at or before it.
+  function localEntry() {
+    let e = null;
+    for (const k of LOCAL.key) if (k.hour <= state.hour + 1e-6) e = k;
+    return e;
+  }
+
+  function renderLocal() {
+    const e = localEntry();
+    if (!e) return;
+    const when = e.label || (e.hour === 0 ? 'High water' : `HW${e.hour > 0 ? '+' : '−'}${String(Math.abs(e.hour)).replace('.5', '½')}`);
+    $('local-when').textContent = when;
+    $('local-text').textContent = e.text;
+  }
+
+  // Inshore water running against the race. Its local name depends on which
+  // way it is going: towards the head end against the ebb is the hive (north
+  // side) or the outset (Bridlington Bay); against the flood it is the inshore
+  // ebb running before the offing turns.
   function eddyActive(d) {
     const rv = Tides.diamondVector(race, state.hour, state.spring);
     const ev = Tides.diamondVector(d, state.hour, state.spring);
     const r = Tides.fromVector(rv.u, rv.v), e = Tides.fromVector(ev.u, ev.v);
-    return r.rate > 0.4 && e.rate > 0.15 && Tides.angleBetween(r.set, e.set) > 90 ? e : null;
+    if (!(r.rate > 0.4 && e.rate > 0.15 && Tides.angleBetween(r.set, e.set) > 90)) return null;
+    const raceFlooding = rv.v < 0;
+    const dir = `${Tides.compass(e.set)} at ${fmt1(e.rate)} kn`;
+    if (d.eddy === 'N') {
+      return raceFlooding
+        ? { ...e, title: 'Ebb inside, flood in the offing', text: `inside the 10 fathom line off North Landing (diamond ${d.id}) the ebb has started, running ${dir}, while the flood still runs outside.` }
+        : state.hour >= 5.5 || state.hour < -4
+          ? { ...e, title: 'Young flood inshore', text: `the flood has started up shore at North Head (diamond ${d.id}, ${dir}) while the best of the ebb still runs in the offing.` }
+          : { ...e, title: 'The hive', text: `a flood tide inside at North Head during the ebb. Off North Landing (diamond ${d.id}) the inshore water runs ${dir}, towards the head end.` };
+    }
+    return raceFlooding
+      ? { ...e, title: 'The outset', text: `the ebb running ashore before high water. Inside Bridlington Bay (diamond ${d.id}) the water runs ${dir}, back towards the head end against the flood.` }
+      : { ...e, title: 'Inshore in the bay', text: `the water inside the bay (diamond ${d.id}) runs ${dir}, against the main stream.` };
   }
 
   function windAgainstTide() {
@@ -543,12 +624,24 @@
     updateChartCursor();
 
     $('narrative').innerHTML = narrative();
+    renderLocal();
+    $('height-label').textContent = DATA.levels ? `Height ≈ ${fmt1(tideHeight(state.hour))} m` : '';
     for (const [k, d2] of [['S', eddyS], ['N', eddyN]]) {
       const p = eddyLayers[k].getElement();
       if (p && d2) p.classList.toggle('active', !!eddyActive(d2));
     }
     raceZone.getElement()?.classList.toggle('active', !!windAgainstTide());
     updateMarkers();
+  }
+
+  // Estimated height of tide at the reference port: a cosine curve between
+  // high and low water, with both scaled between neaps and springs.
+  function tideHeight(h) {
+    const { MHWS, MHWN, MLWN, MLWS } = DATA.levels;
+    const typed = parseFloat($('hw-height').value);
+    const hw = Number.isFinite(typed) ? typed : MHWN + (MHWS - MHWN) * state.spring;
+    const lw = MLWN - (MLWN - MLWS) * state.spring;
+    return lw + (hw - lw) * (1 + Math.cos((Math.PI * h) / (PERIOD / 2))) / 2;
   }
 
   function setHour(h, fromPlay) {
@@ -566,34 +659,34 @@
   // "Why it's unusual" list: each item can jump the map to the moment it shows.
   const features = [
     {
-      title: 'A tide race off the point',
-      body: `The chalk headland juts several kilometres out from the line of the coast, so the North Sea stream has to squeeze round it. Off the tip it speeds up to around 3 kn at springs, far faster than in the bays either side. With wind against tide this produces dangerous overfalls; pilots advise at least a 2 nm offing.`,
-      go: { hour: -3, spring: 1, center: [54.118, -0.06], zoom: 12, select: race.id, wind: '180' },
+      title: 'A tide race off the head end',
+      body: `The chalk headland juts several kilometres out from the line of the coast, so the North Sea stream has to squeeze round it. Off the head end it reaches around 3 kn at springs, far faster than in the bays either side. With wind against tide this throws up dangerous overfalls; pilots advise at least a 2 nm offing.`,
+      go: { hour: -2, spring: 1, center: [54.118, -0.06], zoom: 12, select: race.id, wind: '180' },
     },
     {
-      title: 'Seven hours south, five and a half north',
-      body: `The south-going stream starts about 6 h before HW Hull and runs until about 1 h after it. The north-going stream then has only the remaining 5½ hours. Watch the chart: the curve spends longer above the line than below it.`,
-      go: { hour: 1, spring: 1, center: [54.112, -0.08], zoom: 11, select: offshore.id },
-    },
-    {
-      title: 'It turns at the head first',
-      body: `Close in to the head the stream turns about half an hour before it does a few miles offshore. For a short time the water in the race and the open sea run in opposite directions.`,
-      go: { hour: 0.5, spring: 1, center: [54.115, -0.03], zoom: 12, select: race.id },
-    },
-    eddyS && {
-      title: 'The Bridlington Bay eddy',
-      body: `When the stream runs south, the head shelters Bridlington Bay. Water peels off the point and a slow clockwise eddy turns in the bay, so close inshore by South Landing the stream runs north-east, back towards the head, against the main flow.`,
-      go: { hour: -3, spring: 1, center: [54.088, -0.11], zoom: 13, select: eddyS.id },
+      title: 'Ebb inside, flood in the offing',
+      body: `"+1 hour: Ebb inside to N. Landing, flood all in offing." The inshore water turns first. For a couple of hours after high water the ebb runs north-west along the shore while the flood is still running south outside, until it goes slack in the offing at HW+2½.`,
+      go: { hour: 1.25, spring: 1, center: [54.125, -0.07], zoom: 12, select: eddyN ? eddyN.id : race.id },
     },
     eddyN && {
-      title: 'The north-side eddy',
-      body: `On the north-going stream the lee side swaps. A smaller anticlockwise eddy forms off Thornwick and North Landing, and inshore water keeps running south-east towards the head. In both inshore spots the set hardly ever reverses.`,
-      go: { hour: 3, spring: 1, center: [54.14, -0.1], zoom: 13, select: eddyN.id },
+      title: 'The hive',
+      body: `"Flood tide inside at N. Head during ebb." From HW+2½ a flood starts again in Silex (Selwicks Bay) while the main ebb runs north offshore. It spreads up to Breil by +3 and Thornwick by +4, and is complete from Stottlebink to Thornwick by +5. Inshore on the north side the water runs towards the head end for most of the tide.`,
+      go: { hour: 4, spring: 1, center: [54.128, -0.095], zoom: 13, select: eddyN.id },
+    },
+    eddyS && {
+      title: 'The outset',
+      body: `"Ebb tide before high water ashore." In Bridlington Bay the flood runs only from about HW−5. At HW−3 the outset starts right inside from Sewerby to South Landing, running back towards the head end. It reaches out to the buoy by HW−1 and to the head end by high water.`,
+      go: { hour: -2, spring: 1, center: [54.098, -0.11], zoom: 13, select: eddyS.id },
     },
     {
-      title: 'Quiet water on the Smithic Sands',
-      body: `Inside Bridlington Bay the streams are weak and turn later than outside. That, and the shelter the head gives from northerly weather, is why Bridlington Bay has long been an anchorage for ships waiting out a gale.`,
-      go: { hour: -2, spring: 1, center: [54.075, -0.15], zoom: 12, select: 'H' },
+      title: 'Strong ebb at the Whelk Pots',
+      body: `"+3 hours: Ebb coming in offing (strong at Whelk Pots)." Three miles off Breil Newk the ebb comes in hard soon after it starts, and by +5 the best of the ebb runs all over North Head.`,
+      go: { hour: 3.5, spring: 1, center: [54.14, -0.05], zoom: 12, select: 'W' },
+    },
+    {
+      title: 'No tide in the bay at low water',
+      body: `"Low water: No tide inside from Dykes to Cattlemere Hole." While the best of the ebb runs in the offing, the inshore water of Bridlington Bay, from Danes Dyke to the head end, is slack. That and the shelter from northerly weather is why the bay has long been an anchorage.`,
+      go: { hour: 6, spring: 1, center: [54.098, -0.11], zoom: 12, select: eddyS ? eddyS.id : 'H' },
     },
   ].filter(Boolean);
 
@@ -642,6 +735,14 @@
     try { localStorage.setItem('hwTime', JSON.stringify({ v, day: new Date().toDateString() })); } catch (_) { /* storage unavailable */ }
     render();
   });
+  $('hw-height').addEventListener('input', (e) => {
+    const h = parseFloat(e.target.value);
+    if (!Number.isFinite(h)) return;
+    const { MHWS, MHWN } = DATA.levels;
+    state.spring = Math.min(1, Math.max(0, (h - MHWN) / (MHWS - MHWN)));
+    $('range').value = state.spring;
+    render();
+  });
   $('now').addEventListener('click', () => {
     const d = new Date();
     let h = (d.getHours() * 60 + d.getMinutes() - state.hwMinutes) / 60;
@@ -662,6 +763,14 @@
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => { map.invalidateSize(); sizeCanvas(); drawChart(); }, 150);
   });
+
+  $('glossary').replaceChildren(...LOCAL.glossary.map(([term, def]) => {
+    const dt = document.createElement('dt'); dt.textContent = term;
+    const dd = document.createElement('dd'); dd.textContent = def;
+    const div = document.createElement('div'); div.append(dt, dd);
+    return div;
+  }));
+  if (LOCAL.credit) $('local-credit').textContent = `From the tidal key on ${LOCAL.credit}'s map of Flamborough Head.`;
 
   readColors();
   sizeCanvas();
