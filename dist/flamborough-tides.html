@@ -1034,6 +1034,18 @@ summary { cursor: pointer; font-size: 0.9rem; color: var(--text-2); }
 .leaflet-tooltip.ln-tip { background: var(--surface); color: var(--text); border-color: var(--border); font: 12px var(--font-ui); }
 .leaflet-tooltip.ln-tip::before { border-top-color: var(--border); }
 
+.buoy { overflow: visible; }
+.buoy svg { display: block; overflow: visible; }
+.buoy-cone, .buoy-top { fill: #111; stroke: var(--text-2); stroke-width: 0.6; }
+.buoy-bottom { fill: #f2c200; stroke: var(--text-2); stroke-width: 0.6; }
+.buoy-text {
+  position: absolute; left: 18px; top: -4px; white-space: nowrap;
+  font-size: 10px; line-height: 1.15; font-style: italic; color: var(--text-2);
+  text-shadow: 0 0 3px var(--sea), 0 0 3px var(--sea);
+}
+.source-link { margin: 6px 0 0; }
+.source-link a { color: var(--accent); }
+
 </style>
 <div class="app">
     <div id="map" class="map" aria-label="Map of Flamborough Head with animated tidal streams"></div>
@@ -1069,6 +1081,7 @@ summary { cursor: pointer; font-size: 0.9rem; color: var(--text-2); }
           <label for="hw-height">HW height (m), from the tide table</label>
           <input id="hw-height" type="number" min="3" max="7.5" step="0.1" inputmode="decimal" placeholder="e.g. 5.6">
         </div>
+        <p class="small muted source-link">Get today's times and heights for Bridlington from <a href="https://easytide.admiralty.co.uk/" target="_blank" rel="noopener">ADMIRALTY EasyTide ↗</a>, the UK Hydrographic Office's free predictions. Times there are in GMT, so add an hour in summer.</p>
 
         <label class="field-label" for="range">Spring ↔ neap</label>
         <input id="range" class="slider" type="range" min="0" max="1" step="0.05" value="1"
@@ -1777,10 +1790,10 @@ window.TIDAL_DATA = {
     },
     {
       "id": "F",
-      "name": "Off the head end, by the buoy",
-      "lat": 54.092,
-      "lon": -0.058,
-      "note": "South-east of the head end, near the buoy the local key refers to. The outset reaches here about an hour before high water, and the ebb has eased here by HW+5.",
+      "name": "By the North Smithic buoy",
+      "lat": 54.0985,
+      "lon": -0.062,
+      "note": "Just south of the North Smithic buoy, south-east of the head end: the buoy the local key refers to. There is no tide here at HW−5½. The outset reaches the buoy about an hour before high water, and the ebb has eased here by HW+5.",
       "eddy": null,
       "table": [
         {
@@ -2146,6 +2159,9 @@ window.LAND_OUTLINE = [[54.32,-0.6],[54.31917,-0.41586],[54.31831,-0.41724],[54.
 // runs south and the ebb runs north.
 window.LOCAL_KNOWLEDGE = {
   credit: 'D. J. Lythgoe M.B.E.',
+  // "The buoy" in the key is the North Smithic north cardinal buoy (VQ).
+  // Approximate position; check it against a current chart.
+  buoy: { name: 'N Smithic', light: 'VQ', lat: 54.1033, lon: -0.0650 },
   // Low water is listed between +5 and -5.5, so it sits at about ±6.
   key: [
     { hour: -6, label: 'Low water', text: 'Best of ebb in offing, young flood all up shore at N. Head. No tide inside from Dykes to Cattlemere Hole.' },
@@ -2897,6 +2913,25 @@ window.LOCAL_NAMES = [
   map.on('zoomend', zoomClass);
   zoomClass();
 
+  // The North Smithic buoy: a north cardinal (black over yellow, two cones up).
+  if (LOCAL.buoy) {
+    const bu = LOCAL.buoy;
+    L.marker([bu.lat, bu.lon], {
+      keyboard: false,
+      title: `${bu.name} buoy (north cardinal, ${bu.light}): "the buoy" in the local tidal key`,
+      icon: L.divIcon({
+        className: 'buoy',
+        html: `<svg viewBox="-8 -22 16 26" width="16" height="26" aria-hidden="true">
+            <path class="buoy-cone" d="M-4,-14 L0,-20 L4,-14 Z M-4,-8 L0,-14 L4,-8 Z"/>
+            <path class="buoy-top" d="M-5,-6 L5,-6 L5,-1 L-5,-1 Z"/>
+            <path class="buoy-bottom" d="M-5,-1 L5,-1 L4,3 L-4,3 Z"/>
+          </svg><span class="buoy-text">${bu.name}<br>${bu.light}</span>`,
+        iconSize: [16, 26],
+        iconAnchor: [8, 22],
+      }),
+    }).addTo(map);
+  }
+
   // Tidal diamond markers: ADMIRALTY-style magenta diamond plus a live arrow.
   const markers = {};
   for (const d of diamonds) {
@@ -3378,7 +3413,7 @@ window.LOCAL_NAMES = [
     },
     eddyS && {
       title: 'The outset',
-      body: `"Ebb tide before high water ashore." In Bridlington Bay the flood runs only from about HW−5. At HW−3 the outset starts right inside from Sewerby to South Landing, running back towards the head end. It reaches out to the buoy by HW−1 and to the head end by high water.`,
+      body: `"Ebb tide before high water ashore." In Bridlington Bay the flood runs only from about HW−5. At HW−3 the outset starts right inside from Sewerby to South Landing, running back towards the head end. It reaches out to the North Smithic buoy by HW−1 and to the head end by high water.`,
       go: { hour: -2, spring: 1, center: [54.098, -0.11], zoom: 13, select: eddyS.id },
     },
     {

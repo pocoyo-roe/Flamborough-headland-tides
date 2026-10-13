@@ -96,13 +96,13 @@ const diamonds = [
     note: 'The open-sea stream 3–4 miles off the head ("offside"). It turns last: the ebb is still easing away here at HW−4 while the flood is already running well inshore.',
   },
   {
-    id: 'F', name: 'Off the head end, by the buoy', lat: 54.092, lon: -0.058,
+    id: 'F', name: 'By the North Smithic buoy', lat: 54.0985, lon: -0.062,
     phases: [
       { start: -5.5, set: 200, rate: 1.6 },   // "-5.5 No tide at buoy"
       { start: -0.75, set: 35, rate: 1.8, peak: 0.45 },  // "-1 Outset to buoy"
       { start: 5.0, set: 35, rate: 0 },       // "+5 ... eased at buoy"
     ],
-    note: 'South-east of the head end, near the buoy the local key refers to. The outset reaches here about an hour before high water, and the ebb has eased here by HW+5.',
+    note: 'Just south of the North Smithic buoy, south-east of the head end: the buoy the local key refers to. There is no tide here at HW−5½. The outset reaches the buoy about an hour before high water, and the ebb has eased here by HW+5.',
   },
   {
     id: 'G', name: 'Off South Landing (inside bay)', lat: 54.0995, lon: -0.115,

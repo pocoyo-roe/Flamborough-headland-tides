@@ -366,3 +366,15 @@ summary { cursor: pointer; font-size: 0.9rem; color: var(--text-2); }
 .show-local-text .leaflet-tooltip.ln-tip { display: none; }
 .leaflet-tooltip.ln-tip { background: var(--surface); color: var(--text); border-color: var(--border); font: 12px var(--font-ui); }
 .leaflet-tooltip.ln-tip::before { border-top-color: var(--border); }
+
+.buoy { overflow: visible; }
+.buoy svg { display: block; overflow: visible; }
+.buoy-cone, .buoy-top { fill: #111; stroke: var(--text-2); stroke-width: 0.6; }
+.buoy-bottom { fill: #f2c200; stroke: var(--text-2); stroke-width: 0.6; }
+.buoy-text {
+  position: absolute; left: 18px; top: -4px; white-space: nowrap;
+  font-size: 10px; line-height: 1.15; font-style: italic; color: var(--text-2);
+  text-shadow: 0 0 3px var(--sea), 0 0 3px var(--sea);
+}
+.source-link { margin: 6px 0 0; }
+.source-link a { color: var(--accent); }

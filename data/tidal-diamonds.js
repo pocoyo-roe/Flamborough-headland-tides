@@ -630,10 +630,10 @@ window.TIDAL_DATA = {
     },
     {
       "id": "F",
-      "name": "Off the head end, by the buoy",
-      "lat": 54.092,
-      "lon": -0.058,
-      "note": "South-east of the head end, near the buoy the local key refers to. The outset reaches here about an hour before high water, and the ebb has eased here by HW+5.",
+      "name": "By the North Smithic buoy",
+      "lat": 54.0985,
+      "lon": -0.062,
+      "note": "Just south of the North Smithic buoy, south-east of the head end: the buoy the local key refers to. There is no tide here at HW−5½. The outset reaches the buoy about an hour before high water, and the ebb has eased here by HW+5.",
       "eddy": null,
       "table": [
         {

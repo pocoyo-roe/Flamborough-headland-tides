@@ -194,6 +194,25 @@
   map.on('zoomend', zoomClass);
   zoomClass();
 
+  // The North Smithic buoy: a north cardinal (black over yellow, two cones up).
+  if (LOCAL.buoy) {
+    const bu = LOCAL.buoy;
+    L.marker([bu.lat, bu.lon], {
+      keyboard: false,
+      title: `${bu.name} buoy (north cardinal, ${bu.light}): "the buoy" in the local tidal key`,
+      icon: L.divIcon({
+        className: 'buoy',
+        html: `<svg viewBox="-8 -22 16 26" width="16" height="26" aria-hidden="true">
+            <path class="buoy-cone" d="M-4,-14 L0,-20 L4,-14 Z M-4,-8 L0,-14 L4,-8 Z"/>
+            <path class="buoy-top" d="M-5,-6 L5,-6 L5,-1 L-5,-1 Z"/>
+            <path class="buoy-bottom" d="M-5,-1 L5,-1 L4,3 L-4,3 Z"/>
+          </svg><span class="buoy-text">${bu.name}<br>${bu.light}</span>`,
+        iconSize: [16, 26],
+        iconAnchor: [8, 22],
+      }),
+    }).addTo(map);
+  }
+
   // Tidal diamond markers: ADMIRALTY-style magenta diamond plus a live arrow.
   const markers = {};
   for (const d of diamonds) {
@@ -675,7 +694,7 @@
     },
     eddyS && {
       title: 'The outset',
-      body: `"Ebb tide before high water ashore." In Bridlington Bay the flood runs only from about HW−5. At HW−3 the outset starts right inside from Sewerby to South Landing, running back towards the head end. It reaches out to the buoy by HW−1 and to the head end by high water.`,
+      body: `"Ebb tide before high water ashore." In Bridlington Bay the flood runs only from about HW−5. At HW−3 the outset starts right inside from Sewerby to South Landing, running back towards the head end. It reaches out to the North Smithic buoy by HW−1 and to the head end by high water.`,
       go: { hour: -2, spring: 1, center: [54.098, -0.11], zoom: 13, select: eddyS.id },
     },
     {
