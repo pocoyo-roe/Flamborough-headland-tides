@@ -1,20 +1,30 @@
+/* Layout: full-height chart on the left, a pilot's-notes panel on the right (stacked on phones). */
 :root {
   color-scheme: light;
-  --bg: #f4f2ec;
-  --surface: #fcfcfb;
-  --surface-2: #efede6;
-  --border: #dcd9cf;
-  --text: #0b0b0b;
-  --text-2: #52514e;
-  --muted: #6d6b66;
-  --accent: #2a78d6;
+  --font-display: "Spectral", Georgia, "Times New Roman", serif;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --bg: #edf2f4;
+  --surface: #fbfcfc;
+  --surface-2: #e6edf0;
+  --border: #cbd7dc;
+  --text: #13212e;
+  --text-2: #3e5060;
+  --muted: #63737e;
+  --accent: #1f6fb8;
   --series-1: #2a78d6;
   --series-2: #eb6834;
   --magenta: #b4228c;        /* ADMIRALTY chart magenta for tidal diamonds */
-  --alert-bg: #fdecea;
+  --alert-bg: #fbe9e7;
   --alert-ink: #8a1c1c;
   --race: #c0392b;
   --eddy: #7a3fd1;
+  --sea: #fbfdfd;
+  --shallow: #c4def0;
+  --land: #f1dfa4;           /* chart buff */
+  --land-edge: #3b3324;
+  --graticule: rgba(19, 33, 46, 0.12);
+  --light-flare: #b4228c;
   --tile-filter: grayscale(0.85) contrast(0.9) brightness(1.04);
   /* flow speed ramp, one hue, light (slow) to dark (fast) */
   --flow-1: rgba(70, 130, 200, 0.55);
@@ -28,14 +38,14 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #121211;
-    --surface: #1a1a19;
-    --surface-2: #232321;
-    --border: #34332f;
-    --text: #f0efec;
-    --text-2: #c3c2b7;
-    --muted: #9a998f;
-    --accent: #3987e5;
+    --bg: #0d1520;
+    --surface: #131d28;
+    --surface-2: #1a2632;
+    --border: #2a3846;
+    --text: #e6edf2;
+    --text-2: #b3c1cb;
+    --muted: #8493a0;
+    --accent: #4d9be6;
     --series-1: #3987e5;
     --series-2: #d95926;
     --magenta: #e45bc0;
@@ -43,6 +53,12 @@
     --alert-ink: #ffb4ab;
     --race: #ff6b5b;
     --eddy: #b39dff;
+    --sea: #0a131d;
+    --shallow: #173550;
+    --land: #3b3324;
+    --land-edge: #9c8a5f;
+    --graticule: rgba(230, 237, 242, 0.09);
+    --light-flare: #e45bc0;
     --tile-filter: invert(1) hue-rotate(180deg) grayscale(0.8) brightness(0.8) contrast(0.9);
     --flow-1: rgba(90, 140, 210, 0.5);
     --flow-2: rgba(110, 165, 235, 0.65);
@@ -54,14 +70,14 @@
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #121211;
-  --surface: #1a1a19;
-  --surface-2: #232321;
-  --border: #34332f;
-  --text: #f0efec;
-  --text-2: #c3c2b7;
-  --muted: #9a998f;
-  --accent: #3987e5;
+  --bg: #0d1520;
+  --surface: #131d28;
+  --surface-2: #1a2632;
+  --border: #2a3846;
+  --text: #e6edf2;
+  --text-2: #b3c1cb;
+  --muted: #8493a0;
+  --accent: #4d9be6;
   --series-1: #3987e5;
   --series-2: #d95926;
   --magenta: #e45bc0;
@@ -69,6 +85,12 @@
   --alert-ink: #ffb4ab;
   --race: #ff6b5b;
   --eddy: #b39dff;
+  --sea: #0a131d;
+  --shallow: #173550;
+  --land: #3b3324;
+  --land-edge: #9c8a5f;
+  --graticule: rgba(230, 237, 242, 0.09);
+  --light-flare: #e45bc0;
   --tile-filter: invert(1) hue-rotate(180deg) grayscale(0.8) brightness(0.8) contrast(0.9);
   --flow-1: rgba(90, 140, 210, 0.5);
   --flow-2: rgba(110, 165, 235, 0.65);
@@ -83,14 +105,13 @@ html, body { margin: 0; height: 100%; }
 body {
   background: var(--bg);
   color: var(--text);
-  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 15px/1.5 var(--font-ui);
 }
 
 .app {
   display: grid;
   grid-template-columns: 1fr minmax(320px, 400px);
-  height: 100vh;
-  height: 100dvh;
+  height: 100%;
 }
 .map { height: 100%; background: var(--surface-2); }
 .panel {
@@ -106,7 +127,8 @@ body {
   .panel { border-left: 0; border-top: 1px solid var(--border); overflow: visible; }
 }
 
-h1 { font-size: 1.35rem; line-height: 1.2; margin: 0 0 4px; }
+h1 { font-family: var(--font-display); font-weight: 600; font-size: 1.6rem; line-height: 1.15; margin: 0 0 4px; text-wrap: balance; }
+h2, h3 { text-wrap: balance; }
 h2 { font-size: 1rem; margin: 0 0 8px; }
 h3 { font-size: 0.95rem; margin: 0 0 2px; }
 p { margin: 0 0 8px; }
@@ -132,8 +154,8 @@ p { margin: 0 0 8px; }
 }
 
 .readout { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.readout-main { font-size: 1.5rem; font-weight: 650; font-variant-numeric: tabular-nums; }
-.readout-sub { font-size: 1.1rem; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.readout-main { font-family: var(--font-data); font-size: 1.35rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.readout-sub { font-family: var(--font-data); font-size: 1.1rem; color: var(--text-2); font-variant-numeric: tabular-nums; }
 
 .slider { width: 100%; accent-color: var(--accent); margin: 8px 0 0; }
 .ticks { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--muted); }
@@ -189,8 +211,8 @@ select { width: 100%; margin-top: 4px; }
 
 .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0; }
 .stat { background: var(--surface-2); border-radius: 8px; padding: 6px 10px; }
-.stat-label { display: block; font-size: 0.75rem; color: var(--muted); }
-.stat-value { font-size: 1.15rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+.stat-label { display: block; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.stat-value { font-family: var(--font-data); font-size: 1.1rem; font-weight: 650; font-variant-numeric: tabular-nums; }
 
 .chart-wrap { position: relative; margin-top: 4px; }
 .chart-title { color: var(--text-2); }
@@ -221,7 +243,7 @@ select { width: 100%; margin-top: 4px; }
 
 details { margin-top: 8px; }
 summary { cursor: pointer; font-size: 0.9rem; color: var(--text-2); }
-.dtable { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.dtable { width: 100%; border-collapse: collapse; margin-top: 6px; font-family: var(--font-data); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
 .dtable th, .dtable td { padding: 2px 6px; text-align: right; border-bottom: 1px solid var(--border); }
 .dtable thead th { color: var(--muted); font-weight: 500; }
 .dtable tbody tr { cursor: pointer; }
@@ -268,9 +290,10 @@ summary { cursor: pointer; font-size: 0.9rem; color: var(--text-2); }
   display: block;
   transform: translate(-50%, -50%);
   white-space: nowrap;
+  font-family: var(--font-display);
   font-style: italic;
-  font-size: 12px;
-  color: var(--text-2);
+  font-size: 13px;
+  color: var(--accent);
   text-shadow: 0 0 3px var(--surface), 0 0 3px var(--surface);
   pointer-events: none;
 }
@@ -286,3 +309,35 @@ summary { cursor: pointer; font-size: 0.9rem; color: var(--text-2); }
 @media (prefers-reduced-motion: reduce) {
   .eddy.active, .race-zone.active { animation: none; }
 }
+
+/* ---------------------------------------------------------------- drawn chart base */
+.drawn-chart.leaflet-container { background: var(--sea); }
+.graticule { stroke: var(--graticule); stroke-width: 1; fill: none; }
+.shallows { fill: none; stroke: var(--shallow); stroke-width: 22; stroke-linejoin: round; }
+.land { fill: var(--land); fill-opacity: 1; stroke: var(--land-edge); stroke-width: 1.2; stroke-linejoin: round; }
+.land-label span {
+  display: block; transform: translate(-50%, -50%); white-space: nowrap;
+  font-size: 11px; letter-spacing: 0.04em; color: var(--land-edge); pointer-events: none;
+}
+.light { overflow: visible; }
+.light-flare {
+  position: absolute; left: -2px; top: -16px; width: 4px; height: 16px;
+  background: var(--light-flare); border-radius: 50% 50% 0 0; transform-origin: 50% 100%; transform: rotate(35deg);
+}
+.light-flare::after {
+  content: ""; position: absolute; left: -2px; bottom: -4px; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--land-edge);
+}
+.light-text {
+  position: absolute; left: -98px; top: 2px; width: 92px; text-align: right;
+  font-size: 10px; line-height: 1.2; font-style: italic; color: var(--land-edge); pointer-events: none;
+}
+.graticule-labels { position: absolute; inset: 0; z-index: 420; pointer-events: none; overflow: hidden; }
+.gl { position: absolute; font-family: var(--font-data); font-size: 10px; color: var(--muted); background: var(--sea); padding: 0 3px; }
+.gl-lat { left: 0; transform: translateY(-50%); }
+.gl-lon { top: 0; transform: translateX(-50%); }
+
+.leaflet-control-attribution.leaflet-control { background: var(--surface); color: var(--muted); }
+.leaflet-control-attribution a { color: var(--accent); }
+.leaflet-bar a, .leaflet-bar a:hover { background: var(--surface); color: var(--text); border-bottom-color: var(--border); }
+.leaflet-bar { border-color: var(--border) !important; }

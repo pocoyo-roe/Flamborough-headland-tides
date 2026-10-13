@@ -14,6 +14,10 @@ python3 -m http.server 8000   # then visit http://localhost:8000
 
 It also works as a GitHub Pages site: Settings → Pages → deploy from the branch root.
 
+### Single-file version
+
+`node tools/build-artifact.mjs` bundles everything into `dist/flamborough-tides.html`, one self-contained page for hosts that can't load map tiles, such as a claude.ai artifact. It loads Leaflet from cdnjs and draws the base map in chart style from `data/coastline.js` instead of using OpenStreetMap tiles. Rebuild it after changing the data or code.
+
 The base map comes from OpenStreetMap and the seamarks overlay from OpenSeaMap, so you need to be online to see the map tiles. Leaflet is vendored in `vendor/leaflet`.
 
 ## What it shows

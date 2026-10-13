@@ -53,20 +53,86 @@
     minZoom: 10,
     maxZoom: 15,
     maxBounds: [[53.85, -0.6], [54.38, 0.4]],
-    zoomControl: true,
+    zoomControl: false,
   });
+  L.control.zoom({ position: 'topright' }).addTo(map);
 
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    className: 'base-tiles',
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  }).addTo(map);
+  // Base map: web tiles where the page may load them, otherwise a drawn chart
+  // (buff land, shallow-water tint, graticule) for hosts that block tile servers.
+  const CONFIG = Object.assign({ tiles: true }, window.FLAM_CONFIG);
+  if (CONFIG.tiles) {
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      className: 'base-tiles',
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
 
-  L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
-    maxZoom: 18,
-    opacity: 0.8,
-    attribution: 'Seamarks © <a href="https://www.openseamap.org">OpenSeaMap</a>',
-  }).addTo(map);
+    L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      opacity: 0.8,
+      attribution: 'Seamarks © <a href="https://www.openseamap.org">OpenSeaMap</a>',
+    }).addTo(map);
+  } else {
+    drawChartBase();
+  }
+
+  function drawChartBase() {
+    map.getContainer().classList.add('drawn-chart');
+    map.attributionControl.addAttribution('Simplified coastline · not for navigation');
+    // Graticule every 5 minutes of arc.
+    const step = 5 / 60;
+    for (let lat = Math.ceil(53.85 / step) * step; lat < 54.38; lat += step) {
+      L.polyline([[lat, -0.6], [lat, 0.4]], { className: 'graticule', interactive: false }).addTo(map);
+    }
+    for (let lon = Math.ceil(-0.6 / step) * step; lon < 0.4; lon += step) {
+      L.polyline([[53.85, lon], [54.38, lon]], { className: 'graticule', interactive: false }).addTo(map);
+    }
+    // A wide pale stroke under the land reads as the shallow-water tint along the shore.
+    L.polygon(LAND, { className: 'shallows', interactive: false }).addTo(map);
+    L.polygon(LAND, { className: 'land', interactive: false }).addTo(map);
+
+    const places = [
+      ['Filey', 54.212, -0.305], ['Speeton', 54.158, -0.245], ['Bempton', 54.130, -0.180],
+      ['Flamborough', 54.112, -0.125], ['Sewerby', 54.103, -0.170], ['Bridlington', 54.085, -0.218],
+      ['North Landing', 54.129, -0.118], ['South Landing', 54.106, -0.118],
+    ];
+    for (const [text, lat, lon] of places) {
+      L.marker([lat, lon], {
+        interactive: false, keyboard: false,
+        icon: L.divIcon({ className: 'land-label', html: `<span>${text}</span>`, iconSize: [0, 0] }),
+      }).addTo(map);
+    }
+    // Flamborough Head lighthouse.
+    L.marker([54.1162, -0.0827], {
+      interactive: false, keyboard: false,
+      icon: L.divIcon({
+        className: 'light',
+        html: '<span class="light-flare" aria-hidden="true"></span><span class="light-text">Flamborough Hd<br>Fl(4)15s</span>',
+        iconSize: [0, 0],
+      }),
+    }).addTo(map);
+
+    // Edge labels for the graticule, kept at the top and left of the view.
+    const edge = document.createElement('div');
+    edge.className = 'graticule-labels';
+    map.getContainer().appendChild(edge);
+    const dm = (v, pos, neg) => `${Math.floor(Math.abs(v))}°${pad(Math.round((Math.abs(v) % 1) * 60) % 60)}′${v < 0 ? neg : pos}`;
+    function placeEdge() {
+      const b = map.getBounds();
+      const out = [];
+      for (let lat = Math.ceil(b.getSouth() / step) * step; lat < b.getNorth(); lat += step) {
+        const y = map.latLngToContainerPoint([lat, b.getWest()]).y;
+        out.push(`<span class="gl gl-lat" style="top:${y}px">${dm(lat + 1e-9, 'N', 'S')}</span>`);
+      }
+      for (let lon = Math.ceil(b.getWest() / step) * step; lon < b.getEast(); lon += step) {
+        const x = map.latLngToContainerPoint([b.getNorth(), lon]).x;
+        out.push(`<span class="gl gl-lon" style="left:${x}px">${dm(lon + (lon < 0 ? -1e-9 : 1e-9), 'E', 'W')}</span>`);
+      }
+      edge.innerHTML = out.join('');
+    }
+    map.on('move zoom resize', placeEdge);
+    map.whenReady(placeEdge);
+  }
 
   // Overfalls / race zone off the tip of the head.
   const raceZone = L.circle([54.117, -0.048], {
@@ -91,7 +157,7 @@
   const waterLabels = [
     ['Filey Bay', 54.185, -0.24],
     ['Bridlington Bay', 54.060, -0.115],
-    ['Smithic Sands', 54.072, -0.168],
+    ['Smithic Sands', 54.077, -0.178],
     ['Tide race', 54.105, -0.022],
     ['North Sea', 54.170, 0.06],
   ];
