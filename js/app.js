@@ -26,6 +26,7 @@
     selected: race.id,
     playing: false,
     hwMinutes: null,
+    hwIndex: null, // index into tideData.highs when forecast tides drive the clock
   };
 
   const $ = (id) => document.getElementById(id);
@@ -43,9 +44,109 @@
   }
 
   function clockLabel(h) {
+    if (tideData && state.hwIndex != null) return fmtWhen(hwTime() + h * HOUR_MS, true);
     if (state.hwMinutes == null) return '';
     const m = ((Math.round(state.hwMinutes + h * 60) % 1440) + 1440) % 1440;
     return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+  }
+
+  // ---------------------------------------------------------------- forecast tides
+  // data/tides.json (tools/refresh_tides.py): modelled sea level for
+  // Bridlington from Open-Meteo, with the high and low waters found in it.
+  const HOUR_MS = 3600e3;
+  let tideData = null;
+  const londonTime = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' });
+  const londonDay = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: 'numeric' });
+  const londonWeekday = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'short' });
+  function fmtWhen(ms, withDay) {
+    const d = new Date(ms);
+    return withDay ? `${londonWeekday.format(d)} ${londonTime.format(d)}` : londonTime.format(d);
+  }
+
+  function loadTides(j) {
+    if (!j || !Array.isArray(j.events) || !j.events.length) return;
+    const events = j.events.map((e) => ({ ...e, ms: Date.parse(e.time.replace('Z', ':00Z')) }));
+    const highs = events.filter((e) => e.type === 'HW');
+    // Range of each tide: mean of the falls to the low waters either side.
+    for (const hw of highs) {
+      const i = events.indexOf(hw);
+      const falls = [events[i - 1], events[i + 1]].filter((e) => e && e.type === 'LW').map((e) => hw.height - e.height);
+      hw.range = falls.length ? falls.reduce((a, b) => a + b, 0) / falls.length : null;
+    }
+    tideData = { ...j, events, highs, startMs: Date.parse(j.start.replace('Z', ':00Z')) };
+  }
+
+  const hwTime = () => tideData.highs[state.hwIndex].ms;
+  const absTime = () => hwTime() + state.hour * HOUR_MS;
+
+  // Spring/neap blend from a tide's range, against Bridlington's mean ranges.
+  function springFromRange(range) {
+    const { MHWS, MHWN, MLWN, MLWS } = DATA.levels;
+    const sp = MHWS - MLWS, np = MHWN - MLWN;
+    return Math.min(1, Math.max(0, (range - np) / (sp - np)));
+  }
+
+  // Point the clock at an absolute time: the nearest forecast high water
+  // becomes "HW" and the slider shows hours from it.
+  function setAbsolute(ms, fromPlay) {
+    let best = 0;
+    tideData.highs.forEach((h, i) => { if (Math.abs(h.ms - ms) < Math.abs(tideData.highs[best].ms - ms)) best = i; });
+    selectHigh(best, (ms - tideData.highs[best].ms) / HOUR_MS, fromPlay);
+  }
+
+  function selectHigh(i, hour, fromPlay) {
+    state.hwIndex = i;
+    const hw = tideData.highs[i];
+    if (hw.range != null) { state.spring = springFromRange(hw.range); $('range').value = state.spring; }
+    setHour(hour, fromPlay);
+  }
+
+  // Modelled sea level (m above MSL) at an absolute time, from the hourly series.
+  function seaLevelAt(ms) {
+    const x = (ms - tideData.startMs) / HOUR_MS, i = Math.floor(x), t = x - i;
+    const a = tideData.hourly[i], b = tideData.hourly[i + 1];
+    return a == null || b == null ? null : a + (b - a) * t;
+  }
+
+  function renderTideList() {
+    const box = $('tide-list');
+    if (!tideData) { $('tide-card').hidden = true; return; }
+    $('tide-card').hidden = false;
+    const now = Date.now();
+    const days = new Map();
+    for (const e of tideData.events) {
+      if (e.ms < now - 12 * HOUR_MS) continue;
+      const k = londonDay.format(new Date(e.ms));
+      if (!days.has(k)) days.set(k, []);
+      days.get(k).push(e);
+    }
+    const sel = state.hwIndex != null ? tideData.highs[state.hwIndex] : null;
+    box.replaceChildren(...[...days].slice(0, 8).map(([day, evs]) => {
+      const row = document.createElement('div');
+      row.className = 'tide-day';
+      const h = document.createElement('span');
+      h.className = 'tide-date';
+      h.textContent = day;
+      const list = document.createElement('div');
+      list.className = 'tide-evs';
+      row.append(h, list);
+      for (const e of evs) {
+        const b = document.createElement(e.type === 'HW' ? 'button' : 'span');
+        b.className = `tide-ev ${e.type === 'HW' ? 'hw' : 'lw'}${e === sel ? ' selected' : ''}${e.ms < now ? ' past' : ''}`;
+        b.innerHTML = `<span class="tide-type">${e.type}</span> ${fmtWhen(e.ms)} <span class="tide-h">${e.height >= 0 ? '+' : ''}${e.height.toFixed(1)} m</span>`;
+        if (e.type === 'HW') {
+          b.type = 'button';
+          b.title = `Use this high water${e.range != null ? ` (range ${e.range.toFixed(1)} m)` : ''}`;
+          b.addEventListener('click', () => { togglePlay(false); selectHigh(tideData.highs.indexOf(e), 0); });
+        }
+        list.append(b);
+      }
+      return row;
+    }));
+    const fetched = Date.parse(tideData.fetchedAt.replace('Z', ':00Z'));
+    $('tide-meta').textContent = `Modelled by Open-Meteo, fetched ${londonDay.format(new Date(fetched))} ${fmtWhen(fetched)}. Heights are metres above mean sea level; times can be 20–30 min out.`;
+    const last = tideData.highs.at(-1).ms;
+    $('tide-stale').hidden = last > now;
   }
 
   // ---------------------------------------------------------------- map
@@ -350,9 +451,15 @@
     last = now;
 
     if (state.playing) {
-      let h = state.hour + dt * PLAY_HOURS_PER_SEC;
-      if (h > 6) h -= 12;
-      setHour(h, true);
+      if (tideData && state.hwIndex != null) {
+        const next = absTime() + dt * PLAY_HOURS_PER_SEC * HOUR_MS;
+        if (next > tideData.highs.at(-1).ms + 6 * HOUR_MS) togglePlay(false);
+        else setAbsolute(next, true);
+      } else {
+        let h = state.hour + dt * PLAY_HOURS_PER_SEC;
+        if (h > 6) h -= 12;
+        setHour(h, true);
+      }
     }
 
     const size = map.getSize();
@@ -630,7 +737,7 @@
   function render() {
     $('time').value = state.hour;
     $('time-label').textContent = hourLabel(state.hour);
-    $('clock-label').textContent = state.hwMinutes != null ? clockLabel(state.hour) : '';
+    $('clock-label').textContent = clockLabel(state.hour);
     $('range-label').textContent = state.spring >= 0.95 ? 'Springs' : state.spring <= 0.05 ? 'Neaps' : `${Math.round(state.spring * 100)}% to springs`;
 
     if (lastSelected !== state.selected) { renderDiamond(); lastSelected = state.selected; }
@@ -644,7 +751,11 @@
 
     $('narrative').innerHTML = narrative();
     renderLocal();
-    $('height-label').textContent = DATA.levels ? `Height ≈ ${fmt1(tideHeight(state.hour))} m` : '';
+    const sea = tideData && state.hwIndex != null ? seaLevelAt(absTime()) : null;
+    $('height-label').textContent = sea != null
+      ? `Sea level ${sea >= 0 ? '+' : ''}${fmt1(sea)} m (above mean sea level) · range ${fmt1(tideData.highs[state.hwIndex].range ?? 0)} m`
+      : DATA.levels ? `Height ≈ ${fmt1(tideHeight(state.hour))} m above chart datum (estimate)` : '';
+    if (tideData) renderTideList();
     for (const [k, d2] of [['S', eddyS], ['N', eddyN]]) {
       const p = eddyLayers[k].getElement();
       if (p && d2) p.classList.toggle('active', !!eddyActive(d2));
@@ -737,7 +848,7 @@
 
   // ---------------------------------------------------------------- controls
   $('data-source').textContent = DATA.source;
-  $('hw-label').textContent = `Today's ${DATA.referencePort}`;
+  $('hw-label').textContent = `Or type today's ${DATA.referencePort}`;
   $('time').addEventListener('input', (e) => setHour(Number(e.target.value)));
   $('range').addEventListener('input', (e) => { state.spring = Number(e.target.value); render(); });
   $('wind').addEventListener('change', (e) => { state.wind = e.target.value === '' ? null : Number(e.target.value); render(); });
@@ -749,8 +860,9 @@
     if (v) {
       const [hh, mm] = v.split(':').map(Number);
       state.hwMinutes = hh * 60 + mm;
+      state.hwIndex = null; // a typed time overrides the forecast
     } else state.hwMinutes = null;
-    $('now').disabled = state.hwMinutes == null;
+    $('now').disabled = state.hwMinutes == null && !tideData;
     try { localStorage.setItem('hwTime', JSON.stringify({ v, day: new Date().toDateString() })); } catch (_) { /* storage unavailable */ }
     render();
   });
@@ -763,6 +875,7 @@
     render();
   });
   $('now').addEventListener('click', () => {
+    if (tideData && state.hwMinutes == null) { togglePlay(false); setAbsolute(Date.now()); return; }
     const d = new Date();
     let h = (d.getHours() * 60 + d.getMinutes() - state.hwMinutes) / 60;
     h -= Math.round(h / PERIOD) * PERIOD; // nearest high water
@@ -796,4 +909,18 @@
   renderFeatures();
   render();
   requestAnimationFrame(frame);
+
+  fetch(CONFIG.tidesUrl || 'data/tides.json', { cache: 'no-store' })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((j) => {
+      loadTides(j);
+      if (!tideData) return;
+      $('now').disabled = false;
+      $('now').title = 'Jump to the state of the tide now';
+      const now = Date.now();
+      const highs = tideData.highs;
+      if (state.hwMinutes == null && now > highs[0].ms - 6 * HOUR_MS && now < highs.at(-1).ms + 6 * HOUR_MS) setAbsolute(now);
+      else render();
+    })
+    .catch(() => {});
 })();

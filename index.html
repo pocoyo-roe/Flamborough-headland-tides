@@ -38,7 +38,7 @@
           <button id="step-fwd" class="btn" type="button" aria-label="Forward one hour">+1 h</button>
         </div>
         <div class="row field">
-          <label for="hw-time" id="hw-label">Today's HW Hull</label>
+          <label for="hw-time" id="hw-label">Or type today's HW</label>
           <input id="hw-time" type="time">
           <button id="now" class="btn" type="button" disabled title="Enter today's high water time first">Now</button>
         </div>
@@ -46,7 +46,7 @@
           <label for="hw-height">HW height (m), from the tide table</label>
           <input id="hw-height" type="number" min="3" max="7.5" step="0.1" inputmode="decimal" placeholder="e.g. 5.6">
         </div>
-        <p class="small muted source-link">Get today's times and heights for Bridlington from <a href="https://easytide.admiralty.co.uk/" target="_blank" rel="noopener">ADMIRALTY EasyTide ↗</a>, the UK Hydrographic Office's free predictions. Times there are in GMT, so add an hour in summer.</p>
+        <p class="small muted source-link">To check against the official predictions, get today's times and heights for Bridlington from <a href="https://easytide.admiralty.co.uk/" target="_blank" rel="noopener">ADMIRALTY EasyTide ↗</a>, the UK Hydrographic Office's free predictions. Times there are in GMT, so add an hour in summer.</p>
 
         <label class="field-label" for="range">Spring ↔ neap</label>
         <input id="range" class="slider" type="range" min="0" max="1" step="0.05" value="1"
@@ -60,6 +60,14 @@
           <option value="135">SE</option><option value="180">S</option><option value="225">SW</option>
           <option value="270">W</option><option value="315">NW</option>
         </select>
+      </section>
+
+      <section class="card" id="tide-card" aria-labelledby="tides-h" hidden>
+        <h2 id="tides-h">Bridlington tides this week</h2>
+        <p class="small muted">Pick a high water to set the clock and springs or neaps from it. <strong>Now</strong> jumps to the current tide.</p>
+        <div class="tide-list" id="tide-list"></div>
+        <p class="small alert" id="tide-stale" hidden>This forecast has run out. Ask Claude to refresh the tides, or type today's high water below.</p>
+        <p class="small muted" id="tide-meta"></p>
       </section>
 
       <section class="card now" aria-live="polite">

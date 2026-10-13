@@ -6,7 +6,7 @@
 //
 // Usage: node tools/build-artifact.mjs
 
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -28,7 +28,7 @@ ${read('css/style.css')}
 </style>
 ${body}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script>window.FLAM_CONFIG = { tiles: false };</script>
+<script>window.FLAM_CONFIG = { tiles: false, tidesUrl: 'tides.json' };</script>
 ${script('data/tidal-diamonds.js')}
 ${script('data/coastline.js')}
 ${script('data/local-knowledge.js')}
@@ -39,4 +39,5 @@ ${script('js/app.js')}
 
 mkdirSync(root + 'dist', { recursive: true });
 writeFileSync(root + 'dist/flamborough-tides.html', html);
+copyFileSync(root + 'data/tides.json', root + 'dist/tides.json');
 console.log(`wrote dist/flamborough-tides.html (${(html.length / 1024).toFixed(0)} KB)`);

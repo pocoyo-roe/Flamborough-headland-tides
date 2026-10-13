@@ -378,3 +378,16 @@ summary { cursor: pointer; font-size: 0.9rem; color: var(--text-2); }
 }
 .source-link { margin: 6px 0 0; }
 .source-link a { color: var(--accent); }
+
+/* ---------------------------------------------------------------- forecast tides */
+.tide-list { display: grid; gap: 6px; margin: 8px 0; font-family: var(--font-data); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.tide-day { display: grid; grid-template-columns: 4.2em 1fr; align-items: baseline; gap: 6px; }
+.tide-evs { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.tide-date { color: var(--muted); font-family: var(--font-ui); }
+.tide-ev { display: inline-flex; gap: 4px; align-items: baseline; padding: 1px 5px; border-radius: 5px; border: 1px solid transparent; font: inherit; color: var(--text-2); background: none; }
+.tide-ev.hw { border-color: var(--border); background: var(--surface-2); color: var(--text); cursor: pointer; }
+.tide-ev.hw:hover { border-color: var(--accent); }
+.tide-ev.selected { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.tide-ev.past { opacity: 0.55; }
+.tide-type { font-weight: 600; font-size: 0.7rem; }
+.tide-h { color: var(--muted); }

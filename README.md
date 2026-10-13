@@ -30,6 +30,19 @@ The base map comes from OpenStreetMap and the seamarks overlay from OpenSeaMap, 
 - **Wind from**: pick a wind direction. The race zone lights up when wind is against tide.
 - **Why the tides here are unusual**: six short explainers, each with a **Show me** button that moves the map and clock to the right place and time.
 
+## Tide times
+
+`data/tides.json` holds a week of modelled sea level for Bridlington from the free [Open-Meteo](https://open-meteo.com) marine API (CC BY 4.0), with the high and low waters found in it. The map loads it on open: it jumps to the current state of the tide, sets **HW Bridlington** from the nearest forecast high water, and sets springs or neaps from that tide's range against Bridlington's mean ranges (5.0 m springs, 2.4 m neaps). The week's high waters are listed in the panel; pick one to move the clock to it.
+
+It is a model, not the ADMIRALTY predictions: times can be 20–30 minutes and heights 0.2–0.3 m out, and heights are above mean sea level rather than chart datum. Refresh it with:
+
+```sh
+python3 tools/refresh_tides.py      # writes data/tides.json
+node tools/build-artifact.mjs       # copies it to dist/tides.json, next to the page
+```
+
+and republish. When the forecast runs out the page says so, and you can still type in a high water time by hand.
+
 ## The data: please read
 
 `data/tidal-diamonds.js` holds the diamond tables, timed from **HW Bridlington**. **The values in it are an illustrative model, not ADMIRALTY data.** ADMIRALTY charts and tidal stream atlases are Crown copyright (UKHO), and their tables can't be republished here. Instead, `tools/build-model-data.mjs` builds tables fitted to two sources that agree with each other:
@@ -82,5 +95,7 @@ If you edit the model instead, regenerate the data with `node tools/build-model-
 | `data/local-knowledge.js` | Lythgoe's local tidal key and glossary |
 | `data/local-names.js` | Local names round the headland, placed on the coastline |
 | `tools/build_geography.py` | Builds the coastline and places the local names |
+| `data/tides.json` | A week of Open-Meteo sea level and high/low waters for Bridlington |
+| `tools/refresh_tides.py` | Fetches `data/tides.json` |
 | `tools/build-model-data.mjs` | Generates the illustrative tables |
 | `tools/check-tides.mjs` | Sanity checks for the maths and the tables |
