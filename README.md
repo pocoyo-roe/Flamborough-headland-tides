@@ -43,6 +43,17 @@ node tools/build-artifact.mjs       # copies it to dist/tides.json, next to the 
 
 and republish. When the forecast runs out the page says so, and you can still type in a high water time by hand.
 
+### Official ADMIRALTY times (GitHub Pages version)
+
+With an ADMIRALTY UK Tidal API key, the GitHub Pages version of the map can show the official UKHO predictions for Bridlington instead of the Open-Meteo model. The free Discovery subscription doesn't allow storing or caching predictions, so the map fetches them live each time it opens, through a small relay that keeps the key secret:
+
+1. In Cloudflare (a free account is enough), go to **Workers & Pages → Create → Worker**, paste `worker/admiralty-relay.js` and deploy.
+2. In the worker's **Settings → Variables and secrets**, add a **Secret** named `ADMIRALTY_API_KEY` with your primary key.
+3. Put the worker's address plus `/tides` into `js/config.js` as `liveTidesUrl`, for example `https://flamborough-tides.yourname.workers.dev/tides`.
+4. Turn on GitHub Pages for the repository. The relay only answers requests from `https://pocoyo-roe.github.io`; set an `ALLOWED_ORIGIN` variable on the worker if the site lives elsewhere.
+
+If the relay is unreachable, the map falls back to the Open-Meteo forecast. The claude.ai artifact can't reach outside services, so it always uses Open-Meteo.
+
 ## The data: please read
 
 `data/tidal-diamonds.js` holds the diamond tables, timed from **HW Bridlington**. **The values in it are an illustrative model, not ADMIRALTY data.** ADMIRALTY charts and tidal stream atlases are Crown copyright (UKHO), and their tables can't be republished here. Instead, `tools/build-model-data.mjs` builds tables fitted to two sources that agree with each other:
@@ -104,5 +115,7 @@ If you edit the model instead, regenerate the data with `node tools/build-model-
 | `tools/build_geography.py` | Builds the coastline and places the local names |
 | `data/tides.json` | A week of Open-Meteo sea level and high/low waters for Bridlington |
 | `tools/refresh_tides.py` | Fetches `data/tides.json` |
+| `worker/admiralty-relay.js` | Cloudflare Worker that relays live ADMIRALTY predictions without storing them |
+| `js/config.js` | Site settings: the relay address for live ADMIRALTY times |
 | `tools/build-model-data.mjs` | Generates the illustrative tables |
 | `tools/check-tides.mjs` | Sanity checks for the maths and the tables |

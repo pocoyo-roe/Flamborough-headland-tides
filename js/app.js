@@ -65,7 +65,11 @@
     return withDay ? `${londonWeekday.format(d)} ${londonTime.format(d)}` : londonTime.format(d);
   }
 
-  function loadTides(j) {
+  // Tide times come from one of two sources, in the same shape: official
+  // ADMIRALTY predictions fetched live through worker/admiralty-relay.js
+  // (heights above chart datum, never stored), or data/tides.json, a week of
+  // Open-Meteo modelled sea level (heights above mean sea level).
+  function loadTides(j, kind) {
     if (!j || !Array.isArray(j.events) || !j.events.length) return;
     const events = j.events.map((e) => ({ ...e, ms: Date.parse(e.time.replace('Z', ':00Z')) }));
     const highs = events.filter((e) => e.type === 'HW');
@@ -75,7 +79,7 @@
       const falls = [events[i - 1], events[i + 1]].filter((e) => e && e.type === 'LW').map((e) => hw.height - e.height);
       hw.range = falls.length ? falls.reduce((a, b) => a + b, 0) / falls.length : null;
     }
-    tideData = { ...j, events, highs, startMs: Date.parse(j.start.replace('Z', ':00Z')) };
+    tideData = { ...j, kind, events, highs, startMs: j.start ? Date.parse(j.start.replace('Z', ':00Z')) : null };
   }
 
   const hwTime = () => tideData.highs[state.hwIndex].ms;
@@ -105,6 +109,15 @@
 
   // Modelled sea level (m above MSL) at an absolute time, from the hourly series.
   function seaLevelAt(ms) {
+    if (!tideData.hourly) {
+      // Only high and low waters: a cosine curve between the two either side.
+      const ev = tideData.events;
+      const i = ev.findIndex((e) => e.ms > ms);
+      if (i < 1) return null;
+      const a = ev[i - 1], b = ev[i];
+      const f = (ms - a.ms) / (b.ms - a.ms);
+      return a.height + (b.height - a.height) * (1 - Math.cos(Math.PI * f)) / 2;
+    }
     const x = (ms - tideData.startMs) / HOUR_MS, i = Math.floor(x), t = x - i;
     const a = tideData.hourly[i], b = tideData.hourly[i + 1];
     return a == null || b == null ? null : a + (b - a) * t;
@@ -146,7 +159,9 @@
       return row;
     }));
     const fetched = Date.parse(tideData.fetchedAt.replace('Z', ':00Z'));
-    $('tide-meta').textContent = `Modelled by Open-Meteo, fetched ${londonDay.format(new Date(fetched))} ${fmtWhen(fetched)}. Heights are metres above mean sea level; times can be 20–30 min out.`;
+    $('tide-meta').textContent = tideData.kind === 'admiralty'
+      ? `ADMIRALTY predictions for Bridlington, © Crown copyright, UK Hydrographic Office. Fetched live ${fmtWhen(fetched)}. Heights are metres above chart datum.`
+      : `Modelled by Open-Meteo, fetched ${londonDay.format(new Date(fetched))} ${fmtWhen(fetched)}. Heights are metres above mean sea level; times can be 20–30 min out.`;
     const last = tideData.highs.at(-1).ms;
     $('tide-stale').hidden = last > now;
   }
@@ -772,7 +787,9 @@
     renderLocal();
     const sea = tideData && state.hwIndex != null ? seaLevelAt(absTime()) : null;
     $('height-label').textContent = sea != null
-      ? `Sea level ${sea >= 0 ? '+' : ''}${fmt1(sea)} m (above mean sea level) · range ${fmt1(tideData.highs[state.hwIndex].range ?? 0)} m`
+      ? (tideData.kind === 'admiralty'
+        ? `Height ${fmt1(sea)} m above chart datum · range ${fmt1(tideData.highs[state.hwIndex].range ?? 0)} m`
+        : `Sea level ${sea >= 0 ? '+' : ''}${fmt1(sea)} m (above mean sea level) · range ${fmt1(tideData.highs[state.hwIndex].range ?? 0)} m`)
       : DATA.levels ? `Height ≈ ${fmt1(tideHeight(state.hour))} m above chart datum (estimate)` : '';
     if (tideData) renderTideList();
     for (const [k, d2] of [['S', eddyS], ['N', eddyN]]) {
@@ -929,11 +946,18 @@
   render();
   requestAnimationFrame(frame);
 
-  fetch(CONFIG.tidesUrl || 'data/tides.json', { cache: 'no-store' })
-    .then((r) => (r.ok ? r.json() : null))
-    .then((j) => {
-      loadTides(j);
+  const getJson = (url) => fetch(url, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  // Official ADMIRALTY times when the relay is configured and answers,
+  // otherwise the Open-Meteo forecast published with the page.
+  (CONFIG.liveTidesUrl ? getJson(CONFIG.liveTidesUrl) : Promise.resolve(null))
+    .then((live) => {
+      if (live && !live.error && live.events?.length) return [live, 'admiralty'];
+      return getJson(CONFIG.tidesUrl || 'data/tides.json').then((j) => [j, 'openmeteo']);
+    })
+    .then(([j, kind]) => {
+      loadTides(j, kind);
       if (!tideData) return;
+      $('tides-h').textContent = kind === 'admiralty' ? 'Bridlington tides this week (ADMIRALTY)' : 'Bridlington tides this week';
       $('now').disabled = false;
       $('now').title = 'Jump to the state of the tide now';
       const now = Date.now();
